@@ -1,24 +1,28 @@
-~# Backend and ML Dependencies
-fastapi==0.104.1
-uvicorn==0.24.0
-python-multipart==0.0.6
-pydantic==2.5.0
+# Backend
+fastapi
+uvicorn
+pydantic
+requests
 
-# Machine Learning
-scikit-learn==1.3.2
-pandas==2.1.3
-numpy==1.24.3
-joblib==1.3.2
+# ML & AI
+pandas
+numpy
+scikit-learn
+joblib
+torch
+tensorflow     # optional
+transformers
 
-# Data Processing
-scipy==1.11.4
-matplotlib==3.8.2
-seaborn==0.13.0
+# Frontend
+streamlit
+matplotlib
+seaborn
+plotly
 
-# API utilities
-requests==2.31.0
-python-jose[cryptography]==3.3.0
+# Deployment
+boto3
+python-dotenv
 
 # Testing
-pytest==7.4.3
-httpx==0.25.2
+pytest
+httpx
