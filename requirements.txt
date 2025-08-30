@@ -1,4 +1,4 @@
-# Backend and ML Dependencies
+~# Backend and ML Dependencies
 fastapi==0.104.1
 uvicorn==0.24.0
 python-multipart==0.0.6
