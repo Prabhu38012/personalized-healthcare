@@ -173,10 +173,19 @@ def load_model():
     
     if model_data is None:
         try:
-            if os.path.exists(MODEL_PATH):
+            if MODEL_PATH and os.path.exists(MODEL_PATH):
                 model_data = joblib.load(MODEL_PATH)
                 logger.info("EHR model loaded successfully")
-                logger.info(f"Model type: {type(model_data['model']).__name__}")
+                
+                # Safe model type logging with error handling
+                try:
+                    if isinstance(model_data, dict) and 'model' in model_data and model_data['model'] is not None:
+                        logger.info(f"Model type: {type(model_data['model']).__name__}")
+                    else:
+                        logger.warning("Model data structure is unexpected or missing 'model' key")
+                        logger.info(f"Available keys: {list(model_data.keys()) if isinstance(model_data, dict) else 'Not a dictionary'}")
+                except Exception as e:
+                    logger.warning(f"Could not determine model type: {e}")
             else:
                 logger.warning(f"Model file not found at {MODEL_PATH}")
                 # Create a simple fallback model
