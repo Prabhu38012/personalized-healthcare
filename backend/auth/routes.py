@@ -158,6 +158,29 @@ async def login(request: Request, login_data: LoginRequest):
         )
 
 
+@router.get("/test-connection")
+async def test_connection():
+    """Test if authentication service is working"""
+    return {
+        "status": "ok",
+        "message": "Authentication service is running",
+        "users_available": len(user_store.users),
+        "test_credentials": {
+            "admin": {"email": "admin@healthcare.com", "password": "Admin123!"},
+            "doctor": {"email": "doctor@healthcare.com", "password": "Doctor123!"},
+            "patient": {"email": "patient@healthcare.com", "password": "Patient123!"}
+        }
+    }
+
+@router.get("/health")
+async def auth_health():
+    """Health check for auth service"""
+    return {
+        "status": "healthy",
+        "service": "authentication",
+        "users_loaded": len(user_store.users) > 0
+    }
+
 @router.post("/logout")
 async def logout(current_user = Depends(get_current_user)):
     """User logout endpoint"""

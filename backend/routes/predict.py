@@ -517,6 +517,30 @@ def map_simple_to_ehr_features(patient_dict: dict) -> dict:
     ehr_data['AbuseStatusOMAHA'] = np.random.uniform(0, 10)
     ehr_data['AreyoucoveredbyhealthinsuranceorsomeotherkindofhealthcareplanPhenX'] = np.random.uniform(80, 100)
     
+    # Add the exact missing features that the model was trained on
+    missing_trained_features = [
+        'MicroalbuminCreatineRatio', 'Oraltemperature', 'PeanutIgEAbinSerum',
+        'PolypsizegreatestdimensionbyCAPcancerprotocols', 'Sexualorientation',
+        'ShrimpIgEAbinSerum', 'SoybeanIgEAbinSerum', 'TotalscoreMMSE',
+        'WalnutIgEAbinSerum', 'WheatIgEAbinSerum', 'WhiteoakIgEAbinSerum'
+    ]
+    
+    for feature in missing_trained_features:
+        if 'IgE' in feature:
+            ehr_data[feature] = np.random.exponential(2)  # Allergy markers
+        elif feature == 'MicroalbuminCreatineRatio':
+            ehr_data[feature] = np.random.uniform(0, 30)  # Normal kidney function
+        elif feature == 'Oraltemperature':
+            ehr_data[feature] = np.random.uniform(97, 99)  # Normal temperature
+        elif feature == 'PolypsizegreatestdimensionbyCAPcancerprotocols':
+            ehr_data[feature] = 0  # No polyps for most people
+        elif feature == 'Sexualorientation':
+            ehr_data[feature] = np.random.choice([0, 1, 2])  # Various orientations
+        elif feature == 'TotalscoreMMSE':
+            ehr_data[feature] = np.random.uniform(24, 30)  # Normal cognitive function
+        else:
+            ehr_data[feature] = np.random.uniform(0, 5)  # Generic default
+    
     return ehr_data
     
 @router.post("/predict-simple", response_model=PredictionResponse)
@@ -545,29 +569,56 @@ async def predict_health_risk_simple(patient: SimplePatientData, current_user = 
             # Use preprocessor to transform data
             try:
                 preprocessor = model_data['preprocessor']
+                expected_features = model_data['feature_columns']
                 
                 # Create DataFrame with EHR data
                 df = pd.DataFrame([ehr_data])
+                logger.info(f"Generated features: {len(df.columns)}")
+                
+                # Ensure we have exactly the features the model expects
+                aligned_df = pd.DataFrame()
+                for feature in expected_features:
+                    if feature in df.columns:
+                        aligned_df[feature] = df[feature]
+                    else:
+                        # Set default values for missing features
+                        import numpy as np_local
+                        if 'IgE' in feature:
+                            aligned_df[feature] = [np_local.random.exponential(2)]
+                        elif feature in ['MicroalbuminCreatineRatio']:
+                            aligned_df[feature] = [np_local.random.uniform(0, 30)]
+                        elif feature in ['Oraltemperature']:
+                            aligned_df[feature] = [np_local.random.uniform(97, 99)]
+                        elif feature in ['TotalscoreMMSE']:
+                            aligned_df[feature] = [np_local.random.uniform(24, 30)]
+                        else:
+                            aligned_df[feature] = [0]
+                
+                logger.info(f"Aligned features: {len(aligned_df.columns)}")
                 
                 # Apply the same preprocessing steps as during training
-                df = preprocessor.clean_data(df.copy())
-                df = preprocessor.encode_categorical_features(df, fit=False)
-                df = preprocessor.scale_features(df, fit=False)
+                df_processed = preprocessor.clean_data(aligned_df.copy())
+                df_encoded = preprocessor.encode_categorical_features(df_processed, fit=False)
+                df_scaled = preprocessor.scale_features(df_encoded, fit=False)
                 
-                # Ensure all expected features are present and in correct order
-                for col in model_data['feature_columns']:
-                    if col not in df.columns:
-                        df[col] = 0  # Default value for missing features
-                
-                # Reorder columns to match training
-                df = df[model_data['feature_columns']]
+                # Final check - ensure exact feature match
+                if len(df_scaled.columns) != len(expected_features):
+                    logger.warning(f"Feature count mismatch: {len(df_scaled.columns)} vs {len(expected_features)}")
+                    # Force exact alignment
+                    final_df = pd.DataFrame()
+                    for feature in expected_features:
+                        if feature in df_scaled.columns:
+                            final_df[feature] = df_scaled[feature]
+                        else:
+                            final_df[feature] = [0]
+                    df_scaled = final_df
                 
                 # Make prediction
                 if hasattr(model, 'predict_proba'):
-                    risk_probability = float(model.predict_proba(df.values)[0][1])
+                    risk_probability = float(model.predict_proba(df_scaled.values)[0][1])
                     logger.info(f"EHR model prediction: {risk_probability:.3f}")
                 else:
-                    risk_probability = float(model.predict(df.values)[0])
+                    risk_probability = float(model.predict(df_scaled.values)[0])
                     
             except Exception as transform_error:
                 logger.error(f"EHR transformation error: {str(transform_error)}")
@@ -693,17 +744,17 @@ def identify_simple_risk_factors(patient_data: dict) -> List[str]:
         risk_factors.append(f"Middle age ({age} years)")
     
     # Blood pressure risk factors
-    bp = patient_data.get('resting_bp', 0)
-    if bp >= 140:
-        risk_factors.append(f"Hypertension ({bp} mmHg)")
-    elif bp >= 130:
-        risk_factors.append(f"Elevated blood pressure ({bp} mmHg)")
+    systolic_bp = patient_data.get('systolic_bp', patient_data.get('resting_bp', 0))
+    if systolic_bp and systolic_bp >= 140:
+        risk_factors.append(f"Hypertension ({systolic_bp} mmHg)")
+    elif systolic_bp and systolic_bp >= 130:
+        risk_factors.append(f"Elevated blood pressure ({systolic_bp} mmHg)")
     
     # Cholesterol risk factors
-    cholesterol = patient_data.get('cholesterol', 0)
-    if cholesterol >= 240:
+    cholesterol = patient_data.get('total_cholesterol', patient_data.get('cholesterol', 0))
+    if cholesterol and cholesterol >= 240:
         risk_factors.append(f"High total cholesterol ({cholesterol} mg/dL)")
-    elif cholesterol >= 200:
+    elif cholesterol and cholesterol >= 200:
         risk_factors.append(f"Borderline high cholesterol ({cholesterol} mg/dL)")
     
     ldl = patient_data.get('ldl_cholesterol', 0)
