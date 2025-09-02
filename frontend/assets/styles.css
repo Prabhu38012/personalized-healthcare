@@ -1,0 +1,104 @@
+/* Healthcare App Custom Styles */
+
+/* Main Layout */
+.main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+/* Typography */
+.main-header {
+    font-size: 2.5rem;
+    color: #1a365d;
+    text-align: center;
+    margin: 1.5rem 0;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: #2d3748;
+    font-weight: 600;
+}
+
+/* Cards */
+.card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Risk Level Indicators */
+.risk-high {
+    background: linear-gradient(135deg, #fff5f5 0%, #ffebee 100%);
+    border-left: 4px solid #e53e3e;
+    padding: 1.25rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+}
+
+.risk-medium {
+    background: linear-gradient(135deg, #fffaf0 0%, #fff5eb 100%);
+    border-left: 4px solid #dd6b20;
+    padding: 1.25rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+}
+
+.risk-low {
+    background: linear-gradient(135deg, #f0fff4 0%, #e6fffa 100%);
+    border-left: 4px solid #38a169;
+    padding: 1.25rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+}
+
+/* Buttons */
+.stButton>button {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.5rem 1.5rem;
+    transition: all 0.2s ease;
+}
+
+.stButton>button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Form Elements */
+.stTextInput>div>div>input, 
+.stNumberInput>div>div>input,
+.stSelectbox>div>div>div {
+    border-radius: 8px !important;
+    border: 1px solid #e2e8f0 !important;
+    padding: 0.5rem 1rem !important;
+}
+
+/* Status Indicators */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-success {
+    background-color: #f0fff4;
+    color: #38a169;
+}
+
+.status-error {
+    background-color: #fff5f5;
+    color: #e53e3e;
+}
+
+.status-warning {
+    background-color: #fffaf0;
+    color: #dd6b20;
+}

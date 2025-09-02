@@ -13,6 +13,8 @@ class HealthDataPreprocessor:
         self.label_encoders = {}
         self.imputer = SimpleImputer(strategy='median')
         self.feature_columns = None
+        self.categorical_columns = []
+        self.numerical_columns = []
         
     def clean_data(self, df):
         """Clean and prepare healthcare data"""
@@ -22,53 +24,60 @@ class HealthDataPreprocessor:
         df = df.drop_duplicates()
         
         # Handle missing values
-        numeric_columns = df.select_dtypes(include=[np.number]).columns
-        categorical_columns = df.select_dtypes(include=['object']).columns
+        self.numerical_columns = df.select_dtypes(include=[np.number]).columns.tolist()
+        self.categorical_columns = df.select_dtypes(include=['object']).columns.tolist()
         
         # Fill numeric missing values with median
-        for col in numeric_columns:
-            df[col].fillna(df[col].median(), inplace=True)
-            
+        for col in self.numerical_columns:
+            if col in df.columns:
+                df[col] = df[col].fillna(df[col].median())
+                
         # Fill categorical missing values with mode
-        for col in categorical_columns:
-            df[col].fillna(df[col].mode()[0] if not df[col].mode().empty else 'Unknown', inplace=True)
-            
+        for col in self.categorical_columns:
+            if col in df.columns and col not in ['target', 'diagnosis']:
+                if not df[col].mode().empty:
+                    df[col] = df[col].fillna(df[col].mode()[0])
+                else:
+                    df[col] = df[col].fillna('Unknown')
+                    
         logger.info(f"Data cleaned. Shape: {df.shape}")
         return df
     
     def encode_categorical_features(self, df, fit=True):
         """Encode categorical variables"""
-        categorical_columns = df.select_dtypes(include=['object']).columns
-        
-        for col in categorical_columns:
-            if col not in ['target', 'diagnosis']:  # Skip target variables
+        for col in self.categorical_columns:
+            if col in df.columns and col not in ['target', 'diagnosis']:
                 if fit:
                     if col not in self.label_encoders:
                         self.label_encoders[col] = LabelEncoder()
-                    df[col] = self.label_encoders[col].fit_transform(df[col].astype(str))
+                    # Handle unseen categories during fit
+                    df[col] = df[col].astype(str)
+                    self.label_encoders[col].fit(df[col])
+                    df[col] = self.label_encoders[col].transform(df[col])
                 else:
                     if col in self.label_encoders:
-                        # Handle unseen categories
-                        unique_values = set(df[col].astype(str))
-                        known_values = set(self.label_encoders[col].classes_)
-                        unknown_values = unique_values - known_values
+                        # Handle unseen categories during transform
+                        df[col] = df[col].astype(str)
+                        # Map unknown categories to a default value
+                        known_categories = set(self.label_encoders[col].classes_)
+                        current_categories = set(df[col].unique())
+                        unknown_categories = current_categories - known_categories
                         
-                        if unknown_values:
-                            # Map unknown values to a default category
-                            df[col] = df[col].astype(str).replace(list(unknown_values), 'Unknown')
+                        if unknown_categories:
+                            logger.warning(f"Unknown categories found in {col}: {unknown_categories}")
+                            # Replace unknown categories with the most frequent one
+                            df[col] = df[col].replace(list(unknown_categories), self.label_encoders[col].classes_[0])
                         
-                        df[col] = self.label_encoders[col].transform(df[col].astype(str))
+                        df[col] = self.label_encoders[col].transform(df[col])
                         
         return df
     
     def scale_features(self, df, fit=True):
         """Scale numerical features"""
-        numeric_columns = df.select_dtypes(include=[np.number]).columns
-        
         if fit:
-            df[numeric_columns] = self.scaler.fit_transform(df[numeric_columns])
+            df[self.numerical_columns] = self.scaler.fit_transform(df[self.numerical_columns])
         else:
-            df[numeric_columns] = self.scaler.transform(df[numeric_columns])
+            df[self.numerical_columns] = self.scaler.transform(df[self.numerical_columns])
             
         return df
     
@@ -83,6 +92,8 @@ class HealthDataPreprocessor:
         if target_column and target_column in df.columns:
             X = df.drop(columns=[target_column])
             y = df[target_column]
+            if target_column in self.numerical_columns:
+                self.numerical_columns.remove(target_column)
         else:
             X = df.copy()
             y = None
@@ -102,17 +113,27 @@ class HealthDataPreprocessor:
     
     def transform_single_record(self, record_dict):
         """Transform a single patient record for prediction"""
-        df = pd.DataFrame([record_dict])
-        X, _ = self.prepare_features(df, fit=False)
-        
-        # Ensure all expected features are present
-        if self.feature_columns:
-            for col in self.feature_columns:
-                if col not in X.columns:
-                    X[col] = 0  # Default value for missing features
-            X = X[self.feature_columns]  # Reorder columns
+        try:
+            # Convert to DataFrame
+            df = pd.DataFrame([record_dict])
             
-        return X.iloc[0].values.reshape(1, -1)
+            # Apply the same preprocessing steps
+            df = self.clean_data(df)
+            df = self.encode_categorical_features(df, fit=False)
+            df = self.scale_features(df, fit=False)
+            
+            # Ensure all expected features are present
+            if self.feature_columns:
+                for col in self.feature_columns:
+                    if col not in df.columns:
+                        df[col] = 0  # Default value for missing features
+                df = df[self.feature_columns]  # Reorder columns
+                
+            return df.values.reshape(1, -1)
+            
+        except Exception as e:
+            logger.error(f"Error transforming single record: {e}")
+            raise ValueError(f"Data transformation error: {e}")
 
 def create_synthetic_patient_data(n_samples=1000):
     """Create synthetic patient data for demonstration"""
@@ -140,18 +161,18 @@ def create_synthetic_patient_data(n_samples=1000):
     
     # Create target variable (heart disease risk)
     risk_factors = (
-        (data['age'] > 50).astype(int) +
-        (data['resting_bp'] > 140).astype(int) +
-        (data['cholesterol'] > 240).astype(int) +
-        data['smoking'] +
-        data['diabetes'] +
-        data['family_history'] +
-        (data['bmi'] > 30).astype(int)
+        (np.array(data['age']) > 50).astype(int) +
+        (np.array(data['resting_bp']) > 140).astype(int) +
+        (np.array(data['cholesterol']) > 240).astype(int) +
+        np.array(data['smoking']) +
+        np.array(data['diabetes']) +
+        np.array(data['family_history']) +
+        (np.array(data['bmi']) > 30).astype(int)
     )
     
     # Add some randomness
-    data['target'] = (risk_factors >= 3).astype(int)
+    target = (risk_factors >= 3).astype(int)
     noise = np.random.choice([0, 1], n_samples, p=[0.8, 0.2])
-    data['target'] = np.logical_xor(data['target'], noise).astype(int)
+    data['target'] = np.logical_xor(target, noise).astype(int)
     
     return pd.DataFrame(data)

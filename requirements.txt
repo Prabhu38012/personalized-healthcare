@@ -1,28 +1,37 @@
-# Backend
-fastapi
-uvicorn
-pydantic
-requests
+# Backend API
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.4.0
+requests>=2.31.0
 
 # ML & AI
-pandas
-numpy
-scikit-learn
-joblib
-torch
-tensorflow     # optional
-transformers
+pandas>=2.1.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+joblib>=1.3.0
+torch>=2.0.0
+tensorflow>=2.13.0  # optional for advanced models
+transformers>=4.30.0
 
 # Frontend
-streamlit
-matplotlib
-seaborn
-plotly
+streamlit>=1.28.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+plotly>=5.17.0
+streamlit-extras>=0.3.0
+
+# Data Processing
+tqdm>=4.65.0
 
 # Deployment
-boto3
-python-dotenv
+boto3>=1.28.0
+python-dotenv>=1.0.0
+supervisor>=4.2.5
 
-# Testing
-pytest
-httpx
+# Development & Testing
+pytest>=7.4.0
+httpx>=0.24.0
+psutil>=5.9.0  # for memory monitoring during training
+
+# Utilities
+typing-extensions>=4.7.0

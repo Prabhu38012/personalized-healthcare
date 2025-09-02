@@ -48,6 +48,7 @@ ENV/
 data/*.csv
 !data/heart.csv
 !data/synthetic_data.csv
+data/ehr/
 
 # Logs
 *.log

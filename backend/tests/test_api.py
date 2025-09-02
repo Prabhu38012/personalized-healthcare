@@ -15,30 +15,39 @@ def test_root_endpoint():
 
 def test_health_check():
     """Test health check endpoint"""
-    response = client.get("/health")
+    response = client.get("/api/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
 
 def test_predict_endpoint():
     """Test prediction endpoint with valid data"""
     patient_data = {
-        "age": 45,
-        "sex": "M",
-        "chest_pain_type": "typical",
-        "resting_bp": 130,
-        "cholesterol": 200,
-        "fasting_blood_sugar": 0,
-        "resting_ecg": "normal",
-        "max_heart_rate": 150,
-        "exercise_angina": 0,
-        "oldpeak": 1.0,
-        "slope": "upsloping",
-        "ca": 0,
-        "thal": "normal",
-        "bmi": 25.0,
-        "smoking": 0,
-        "diabetes": 0,
-        "family_history": 0
+        "fhir_bundle": {
+            "entry": [
+                {
+                    "resource": {
+                        "resourceType": "Patient",
+                        "id": "patient1",
+                        "gender": "male",
+                        "birthDate": "1978-01-01"
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Observation",
+                        "code": {"coding": [{"display": "Systolic Blood Pressure"}]},
+                        "valueQuantity": {"value": 130}
+                    }
+                },
+                {
+                    "resource": {
+                        "resourceType": "Observation",
+                        "code": {"coding": [{"display": "Total Cholesterol"}]},
+                        "valueQuantity": {"value": 200}
+                    }
+                }
+            ]
+        }
     }
     
     response = client.post("/api/predict", json=patient_data)
@@ -75,34 +84,46 @@ def test_batch_predict():
     """Test batch prediction endpoint"""
     patients_data = [
         {
-            "age": 45,
-            "sex": "M",
-            "chest_pain_type": "typical",
-            "resting_bp": 130,
-            "cholesterol": 200,
-            "fasting_blood_sugar": 0,
-            "resting_ecg": "normal",
-            "max_heart_rate": 150,
-            "exercise_angina": 0,
-            "oldpeak": 1.0,
-            "slope": "upsloping",
-            "ca": 0,
-            "thal": "normal"
+            "fhir_bundle": {
+                "entry": [
+                    {
+                        "resource": {
+                            "resourceType": "Patient",
+                            "id": "patient1",
+                            "gender": "male",
+                            "birthDate": "1978-01-01"
+                        }
+                    },
+                    {
+                        "resource": {
+                            "resourceType": "Observation",
+                            "code": {"coding": [{"display": "Systolic Blood Pressure"}]},
+                            "valueQuantity": {"value": 130}
+                        }
+                    }
+                ]
+            }
         },
         {
-            "age": 60,
-            "sex": "F",
-            "chest_pain_type": "atypical",
-            "resting_bp": 160,
-            "cholesterol": 280,
-            "fasting_blood_sugar": 1,
-            "resting_ecg": "abnormal",
-            "max_heart_rate": 120,
-            "exercise_angina": 1,
-            "oldpeak": 2.5,
-            "slope": "flat",
-            "ca": 2,
-            "thal": "reversible"
+            "fhir_bundle": {
+                "entry": [
+                    {
+                        "resource": {
+                            "resourceType": "Patient",
+                            "id": "patient2",
+                            "gender": "female",
+                            "birthDate": "1963-01-01"
+                        }
+                    },
+                    {
+                        "resource": {
+                            "resourceType": "Observation",
+                            "code": {"coding": [{"display": "Systolic Blood Pressure"}]},
+                            "valueQuantity": {"value": 160}
+                        }
+                    }
+                ]
+            }
         }
     ]
     

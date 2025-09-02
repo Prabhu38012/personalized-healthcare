@@ -1,17 +1,23 @@
+import os
+import sys
+import time
+import gc
+import logging
+from datetime import datetime
+
 import pandas as pd
 import numpy as np
+import joblib
 from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score
-from sklearn.metrics import classification_report, confusion_matrix
-import joblib
-import os
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from utils.preprocess import HealthDataPreprocessor, create_synthetic_patient_data
-import logging
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score, roc_auc_score,
+    classification_report, confusion_matrix
+)
+
+from backend.utils.preprocess import HealthDataPreprocessor
+from backend.utils.ehr_processor import EHRDataProcessor
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,24 +26,90 @@ class HealthRiskModelTrainer:
     def __init__(self):
         self.preprocessor = HealthDataPreprocessor()
         self.models = {
-            'random_forest': RandomForestClassifier(random_state=42),
+            'random_forest': RandomForestClassifier(random_state=42, n_jobs=-1),
             'gradient_boosting': GradientBoostingClassifier(random_state=42),
-            'logistic_regression': LogisticRegression(random_state=42, max_iter=1000),
-            'svm': SVC(random_state=42, probability=True)
+            'logistic_regression': LogisticRegression(random_state=42, max_iter=1000, n_jobs=-1),
+            # Removed SVM for large datasets due to computational complexity
         }
         self.best_model = None
         self.best_score = 0
+        self.training_history = []
         
-    def load_data(self, data_path=None):
-        """Load healthcare data"""
+    def analyze_dataset(self, data_path):
+        """Analyze the EHR dataset before training"""
+        logger.info("=== DATASET ANALYSIS ===")
+        processor = EHRDataProcessor(data_path)
+        
+        # Get memory and size estimates
+        memory_info = processor.estimate_memory_usage()
+        logger.info(f"Dataset Size: {memory_info['total_size_gb']:.2f} GB")
+        logger.info(f"Total Files: {memory_info['total_files']:,}")
+        logger.info(f"Recommended Batch Size: {memory_info['recommended_batch_size']}")
+        
+        # Analyze features
+        feature_info = processor.get_feature_summary(sample_size=500)
+        logger.info(f"Total Features Found: {feature_info['total_features']}")
+        logger.info(f"Sample Features: {feature_info['feature_names'][:10]}...")
+        
+        return memory_info, feature_info
+        
+    def load_data(self, data_path=None, max_samples=None):
+        """Load EHR data efficiently with streaming approach"""
         if data_path and os.path.exists(data_path):
-            logger.info(f"Loading data from {data_path}")
-            data = pd.read_csv(data_path)
-        else:
-            logger.info("Creating synthetic patient data")
-            data = create_synthetic_patient_data(2000)
+            logger.info(f"Loading EHR data from {data_path}")
             
-        return data
+            # Analyze dataset first
+            memory_info, feature_info = self.analyze_dataset(data_path)
+            
+            processor = EHRDataProcessor(data_path)
+            all_data = []
+            total_samples = 0
+            
+            start_time = time.time()
+            
+            # Process in optimized batches
+            for batch_idx, batch_df in enumerate(processor.process_in_batches(use_multiprocessing=True)):
+                if not batch_df.empty:
+                    all_data.append(batch_df)
+                    total_samples += len(batch_df)
+                    
+                    # Log progress
+                    elapsed = time.time() - start_time
+                    logger.info(f"Loaded {total_samples:,} samples in {elapsed:.1f}s")
+                    
+                    # Optional: Limit samples for testing
+                    if max_samples and total_samples >= max_samples:
+                        logger.info(f"Reached sample limit: {max_samples:,}")
+                        break
+                    
+                    # Memory management for very large datasets
+                    if len(all_data) > 10:  # Combine every 10 batches
+                        combined_df = pd.concat(all_data, ignore_index=True)
+                        all_data = [combined_df]
+                        gc.collect()
+            
+            if all_data:
+                data = pd.concat(all_data, ignore_index=True)
+                logger.info(f"Final dataset: {len(data):,} samples with {len(data.columns)} features")
+                
+                # Log feature distribution
+                if 'target' in data.columns:
+                    target_dist = data['target'].value_counts()
+                    logger.info(f"Target distribution: {dict(target_dist)}")
+                
+                return data
+            else:
+                logger.warning("No valid data found in EHR files")
+                return self.create_fallback_data()
+        else:
+            logger.info("EHR data path not found, creating synthetic data")
+            return self.create_fallback_data()
+    
+    def create_fallback_data(self):
+        """Create synthetic data as fallback"""
+        logger.info("Creating synthetic patient data as fallback")
+        from backend.utils.preprocess import create_synthetic_patient_data
+        return create_synthetic_patient_data(5000)  # Larger synthetic dataset
     
     def train_models(self, data, target_column='target'):
         """Train multiple models and select the best one"""
@@ -158,7 +230,7 @@ class HealthRiskModelTrainer:
             report += f"- AUC Score: {result['auc']:.4f}\n\n"
             
         # Feature importance for tree-based models
-        if hasattr(self.best_model, 'feature_importances_'):
+        if self.best_model is not None and hasattr(self.best_model, 'feature_importances_'):
             feature_importance = pd.DataFrame({
                 'feature': self.preprocessor.feature_columns,
                 'importance': self.best_model.feature_importances_
@@ -167,6 +239,9 @@ class HealthRiskModelTrainer:
             report += "## Feature Importance (Top 10)\n"
             for _, row in feature_importance.head(10).iterrows():
                 report += f"- {row['feature']}: {row['importance']:.4f}\n"
+        else:
+            report += "## Feature Importance\n"
+            report += "Feature importance not available for this model type.\n"
                 
         return report
 
@@ -175,7 +250,7 @@ def main():
     trainer = HealthRiskModelTrainer()
     
     # Load data
-    data = trainer.load_data()
+    data = trainer.load_data(data_path='d:/personalized-healthcare/data/ehr')
     
     # Train models
     results, X_test, y_test = trainer.train_models(data)
