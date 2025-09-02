@@ -10,26 +10,41 @@ import joblib
 import pandas as pd
 import numpy as np
 
+# Import prediction routes
 try:
-    # Try relative import first (when running from backend directory)
-    from routes.predict import router as predict_router
+    # Try absolute import first (more reliable)
+    from backend.routes.predict import router as predict_router
+    print("✓ Prediction routes imported successfully (absolute)")
+except ImportError:
     try:
+        # Fallback to relative import
+        from routes.predict import router as predict_router
+        print("✓ Prediction routes imported successfully (relative)")
+    except ImportError as e:
+        print(f"✗ Failed to import prediction routes: {e}")
+        raise
+
+# Import authentication routes with absolute imports first
+auth_router = None
+auth_available = False
+
+try:
+    # Try absolute import first (more reliable)
+    from backend.auth.routes import router as auth_router
+    auth_available = True
+    print("✓ Authentication routes imported successfully (absolute)")
+except ImportError as e:
+    print(f"Failed absolute auth import: {e}")
+    try:
+        # Fallback to relative import
         from auth.routes import router as auth_router
         auth_available = True
-    except ImportError:
+        print("✓ Authentication routes imported successfully (relative)")
+    except ImportError as e:
+        print(f"Failed relative auth import: {e}")
         auth_router = None
         auth_available = False
-        print("Authentication module not available - running without auth")
-except ImportError:
-    # Fallback to absolute import (when running from project root)
-    from backend.routes.predict import router as predict_router
-    try:
-        from backend.auth.routes import router as auth_router
-        auth_available = True
-    except ImportError:
-        auth_router = None
-        auth_available = False
-        print("Authentication module not available - running without auth")
+        print("⚠️  Authentication module not available - running without auth")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -52,11 +67,19 @@ app.add_middleware(
 
 # Include routes
 app.include_router(predict_router, prefix="/api", tags=["predictions"])
+print("✓ Prediction routes registered at /api")
+
 if auth_available and auth_router:
     app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
-    print("Authentication routes enabled")
+    print("✓ Authentication routes registered at /api/auth")
+    print("Available auth endpoints:")
+    print("  - POST /api/auth/login")
+    print("  - GET /api/auth/default-users")
+    print("  - GET /api/auth/health")
+    print("  - GET /api/auth/test-connection")
 else:
-    print("Running in demo mode without authentication")
+    print("⚠️  Running in demo mode without authentication")
+    print("  - Authentication endpoints will return 404")
 
 @app.get("/")
 async def root():

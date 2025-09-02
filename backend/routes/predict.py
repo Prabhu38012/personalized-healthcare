@@ -8,14 +8,15 @@ import joblib
 import pandas as pd
 import numpy as np
 
-# Import authentication dependencies
-from typing import Callable, Any
+# Import authentication dependencies with absolute imports first
 try:
-    from auth.routes import get_current_user, get_doctor_or_admin
+    # Try absolute import first (more reliable)
+    from backend.auth.routes import get_current_user, get_doctor_or_admin
     auth_available = True
 except ImportError:
     try:
-        from backend.auth.routes import get_current_user, get_doctor_or_admin
+        # Fallback to relative import
+        from auth.routes import get_current_user, get_doctor_or_admin
         auth_available = True
     except ImportError:
         # Fallback for when auth is not available
@@ -53,7 +54,25 @@ router = APIRouter()
 
 # Global variables for model and preprocessor
 model_data = None
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "models", "ehr_risk_model.pkl")
+
+# Try multiple possible model paths to handle different execution contexts
+POSSIBLE_MODEL_PATHS = [
+    os.path.join(os.path.dirname(__file__), "..", "..", "models", "ehr_risk_model.pkl"),  # From backend/routes/
+    os.path.join(os.getcwd(), "models", "ehr_risk_model.pkl"),  # From project root
+    r"d:\personalized-healthcare\models\ehr_risk_model.pkl",  # Absolute path
+    "models/ehr_risk_model.pkl",  # Relative from current directory
+]
+
+# Find the actual model path
+MODEL_PATH = None
+for path in POSSIBLE_MODEL_PATHS:
+    if os.path.exists(path):
+        MODEL_PATH = path
+        break
+        
+if MODEL_PATH is None:
+    MODEL_PATH = POSSIBLE_MODEL_PATHS[0]  # Use first path as fallback
+    logger.warning(f"Model file not found in any expected location. Will use fallback: {MODEL_PATH}")
 
 @router.get("/reload-model")
 async def reload_model(current_user = Depends(get_doctor_or_admin) if auth_available else None):
@@ -582,15 +601,15 @@ async def predict_health_risk_simple(patient: SimplePatientData, current_user = 
                         aligned_df[feature] = df[feature]
                     else:
                         # Set default values for missing features
-                        import numpy as np_local
+                        import numpy as np
                         if 'IgE' in feature:
-                            aligned_df[feature] = [np_local.random.exponential(2)]
+                            aligned_df[feature] = [np.random.exponential(2)]
                         elif feature in ['MicroalbuminCreatineRatio']:
-                            aligned_df[feature] = [np_local.random.uniform(0, 30)]
+                            aligned_df[feature] = [np.random.uniform(0, 30)]
                         elif feature in ['Oraltemperature']:
-                            aligned_df[feature] = [np_local.random.uniform(97, 99)]
+                            aligned_df[feature] = [np.random.uniform(97, 99)]
                         elif feature in ['TotalscoreMMSE']:
-                            aligned_df[feature] = [np_local.random.uniform(24, 30)]
+                            aligned_df[feature] = [np.random.uniform(24, 30)]
                         else:
                             aligned_df[feature] = [0]
                 
