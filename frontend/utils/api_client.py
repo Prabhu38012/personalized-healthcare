@@ -3,6 +3,8 @@ API utilities for frontend communication with backend services
 """
 import requests
 import streamlit as st
+import time
+from .caching import cached_health_check, cached_model_info
 
 
 class HealthcareAPI:
@@ -10,6 +12,11 @@ class HealthcareAPI:
     
     def __init__(self, base_url="http://localhost:8000/api"):
         self.base_url = base_url
+        self.auth_headers = {}
+    
+    def set_auth_headers(self, headers):
+        """Set authentication headers"""
+        self.auth_headers = headers or {}
     
     def make_prediction(self, patient_data):
         """Make API call to get prediction with only expected features"""
@@ -49,7 +56,8 @@ class HealthcareAPI:
                     pass
         
         try:
-            response = requests.post(f"{self.base_url}/predict-simple", json=filtered_data, timeout=30)
+            headers = {**self.auth_headers}
+            response = requests.post(f"{self.base_url}/predict-simple", json=filtered_data, headers=headers, timeout=30)
             if response.status_code == 200:
                 return response.json()
             else:
@@ -63,22 +71,12 @@ class HealthcareAPI:
             return None
     
     def check_backend_health(self):
-        """Check if backend is healthy"""
-        try:
-            response = requests.get(f"{self.base_url}/health", timeout=5)
-            return response.status_code == 200
-        except:
-            return False
+        """Check if backend is healthy - using global cached function"""
+        return cached_health_check(self.base_url)
     
     def get_model_info(self):
-        """Get model information from backend"""
-        try:
-            response = requests.get(f"{self.base_url}/model-info", timeout=5)
-            if response.status_code == 200:
-                return response.json()
-        except:
-            pass
-        return None
+        """Get model information from backend - using global cached function"""
+        return cached_model_info(self.base_url)
     
     def reload_model(self):
         """Force reload the model on backend"""

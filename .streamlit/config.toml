@@ -1,0 +1,40 @@
+[global]
+developmentMode = false
+showWarningOnDirectExecution = false
+
+[server]
+runOnSave = false
+port = 8501
+enableCORS = true
+enableXsrfProtection = true
+maxUploadSize = 50
+maxMessageSize = 50
+enableWebsocketCompression = true
+
+[browser]
+gatherUsageStats = false
+serverAddress = "localhost"
+
+[runner]
+magicEnabled = true
+installTracer = false
+fixMatplotlib = true
+postScriptGC = true
+fastReruns = true
+enforceSerializableSessionState = false
+
+[client]
+caching = true
+displayEnabled = true
+showErrorDetails = false
+
+[theme]
+base = "light"
+primaryColor = "#4299e1"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8fafc"
+textColor = "#2d3748"
+
+[deprecation]
+showfileUploaderEncoding = false
+showImageFormat = false

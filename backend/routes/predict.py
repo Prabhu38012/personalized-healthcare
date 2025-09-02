@@ -2,11 +2,28 @@ import os
 import logging
 from typing import Dict, List, Optional, Any, Union
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field, field_validator, model_validator
 import joblib
 import pandas as pd
 import numpy as np
+
+# Import authentication dependencies
+from typing import Callable, Any
+try:
+    from auth.routes import get_current_user, get_doctor_or_admin
+    auth_available = True
+except ImportError:
+    try:
+        from backend.auth.routes import get_current_user, get_doctor_or_admin
+        auth_available = True
+    except ImportError:
+        # Fallback for when auth is not available
+        auth_available = False
+        async def get_current_user() -> Any:
+            return {"id": "demo_user", "email": "demo@demo.com", "role": "patient"}
+        async def get_doctor_or_admin() -> Any:
+            return {"id": "demo_admin", "email": "admin@demo.com", "role": "admin"}
 
 # Initialize logger first
 logging.basicConfig(level=logging.INFO)
@@ -39,8 +56,8 @@ model_data = None
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "models", "ehr_risk_model.pkl")
 
 @router.get("/reload-model")
-async def reload_model():
-    """Force reload the model"""
+async def reload_model(current_user = Depends(get_doctor_or_admin) if auth_available else None):
+    """Force reload the model (requires doctor or admin access if auth is enabled)"""
     global model_data
     model_data = None
     try:
@@ -503,8 +520,8 @@ def map_simple_to_ehr_features(patient_dict: dict) -> dict:
     return ehr_data
     
 @router.post("/predict-simple", response_model=PredictionResponse)
-async def predict_health_risk_simple(patient: SimplePatientData):
-    """Predict health risk for a patient using simple data format"""
+async def predict_health_risk_simple(patient: SimplePatientData, current_user = Depends(get_current_user) if auth_available else None):
+    """Predict health risk for a patient using simple data format (requires authentication if enabled)"""
     try:
         logger.info("=== STARTING PREDICTION ===")
         # Load model
@@ -758,8 +775,8 @@ def identify_simple_risk_factors(patient_data: dict) -> List[str]:
     return risk_factors
 
 @router.post("/predict", response_model=PredictionResponse)
-async def predict_health_risk(patient: FHIRPatientData):
-    """Predict health risk for a patient using EHR data"""
+async def predict_health_risk(patient: FHIRPatientData, current_user = Depends(get_current_user) if auth_available else None):
+    """Predict health risk for a patient using EHR data (requires authentication if enabled)"""
     try:
         # Load model
         model_data = load_model()
@@ -827,7 +844,9 @@ async def get_model_info():
         model_data = load_model()
         
         # Get model type safely
-        model_type = model_data.get('model_type', type(model_data['model']).__name__)
+        model_type = model_data.get('model_type')
+        if not model_type:
+            model_type = type(model_data['model']).__name__
         
         # Get feature information safely
         feature_columns = []
@@ -904,8 +923,8 @@ async def health_check():
         }
 
 @router.post("/batch-predict")
-async def batch_predict_health_risk(patients: List[FHIRPatientData]):
-    """Predict health risk for multiple patients using EHR data"""
+async def batch_predict_health_risk(patients: List[FHIRPatientData], current_user = Depends(get_doctor_or_admin) if auth_available else None):
+    """Predict health risk for multiple patients using EHR data (requires doctor or admin access if auth enabled)"""
     try:
         predictions = []
         

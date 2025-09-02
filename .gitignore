@@ -46,9 +46,9 @@ ENV/
 
 # Data files (keep structure, ignore large datasets)
 data/*.csv
-!data/heart.csv
-!data/synthetic_data.csv
 data/ehr/
+data/temp/
+data/cache/
 
 # Logs
 *.log
@@ -71,12 +71,19 @@ Thumbs.db
 *.pem
 
 # Streamlit
-.streamlit/
+.streamlit/secrets.toml
+.streamlit/credentials.toml
 
-# Testing
+# Testing and Development
+test_*.py
+*_test.py
+tests/temp/
 .coverage
 .pytest_cache/
 htmlcov/
+
+# Development containers
+.devcontainer/
 
 # Temporary files
 *.tmp

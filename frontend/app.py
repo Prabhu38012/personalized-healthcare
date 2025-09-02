@@ -4,34 +4,42 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from components.forms import PatientInputForm
+from components.auth import (
+    init_session_state, check_session_validity, render_login_page,
+    render_user_info, require_auth, get_auth_headers, is_admin, is_doctor,
+    show_development_credentials
+)
 from pages.dashboard import create_dashboard, calculate_risk_score
 from utils.api_client import HealthcareAPI
+from utils.caching import cleanup_expired_cache, get_cache_stats
 import json
 import time
 import os
 from datetime import datetime
 
 def load_css():
-    """Load custom CSS styles"""
-    css_file = os.path.join(os.path.dirname(__file__), "assets", "styles.css")
-    if os.path.exists(css_file):
-        with open(css_file) as f:
-            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
-    else:
-        # Fallback inline styles for essential components
-        st.markdown("""
-        <style>
-            .card {
-                background: white;
-                border-radius: 10px;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                padding: 1.5rem;
-                margin-bottom: 1.5rem;
-            }
-            .status-success { background-color: #f0fff4; color: #38a169; }
-            .status-error { background-color: #fff5f5; color: #e53e3e; }
-        </style>
-        """, unsafe_allow_html=True)
+    """Load custom CSS styles - cached for performance"""
+    if 'css_loaded' not in st.session_state:
+        css_file = os.path.join(os.path.dirname(__file__), "assets", "styles.css")
+        if os.path.exists(css_file):
+            with open(css_file) as f:
+                st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+        else:
+            # Fallback inline styles for essential components
+            st.markdown("""
+            <style>
+                .card {
+                    background: white;
+                    border-radius: 10px;
+                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+                    padding: 1.5rem;
+                    margin-bottom: 1.5rem;
+                }
+                .status-success { background-color: #f0fff4; color: #38a169; }
+                .status-error { background-color: #fff5f5; color: #e53e3e; }
+            </style>
+            """, unsafe_allow_html=True)
+        st.session_state.css_loaded = True
 
 # Page configuration
 st.set_page_config(
@@ -41,11 +49,28 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Initialize authentication
+init_session_state()
+
 # Load custom CSS
 load_css()
 
-# Initialize API client
-api_client = HealthcareAPI()
+# Check authentication before proceeding
+if not st.session_state.authenticated or not check_session_validity():
+    render_login_page()
+    # Show development credentials in sidebar during login (for development purposes)
+    import os
+    if os.getenv("SHOW_TEST_CREDENTIALS", "true").lower() == "true":
+        show_development_credentials()
+    st.stop()
+
+# Initialize API client with auth headers (cached for performance)
+if 'api_client' not in st.session_state:
+    st.session_state.api_client = HealthcareAPI()
+    
+api_client = st.session_state.api_client
+if hasattr(api_client, 'set_auth_headers'):
+    api_client.set_auth_headers(get_auth_headers())
 
 
 
@@ -351,39 +376,241 @@ def display_risk_factors(prediction):
 
 
 
+# display_connection_status function moved to avoid duplication - see line 584
+
+
+def render_patient_management():
+    """Render patient management interface for doctors"""
+    st.header("👥 Patient Management")
+    
+    tab1, tab2 = st.tabs(["Patient Search", "Recent Analyses"])
+    
+    with tab1:
+        st.subheader("Search Patients")
+        
+        search_col1, search_col2 = st.columns([2, 1])
+        with search_col1:
+            search_query = st.text_input("Search by name or ID", placeholder="Enter patient name or ID")
+        with search_col2:
+            search_btn = st.button("🔍 Search", use_container_width=True)
+        
+        if search_btn and search_query:
+            st.info("Patient search functionality would be implemented here with proper database integration.")
+            
+        # Mock patient list for demonstration
+        st.subheader("Recent Patients")
+        mock_patients = [
+            {"id": "P001", "name": "John Doe", "age": 45, "risk_level": "Medium", "last_visit": "2024-01-15"},
+            {"id": "P002", "name": "Jane Smith", "age": 38, "risk_level": "Low", "last_visit": "2024-01-14"},
+            {"id": "P003", "name": "Bob Wilson", "age": 62, "risk_level": "High", "last_visit": "2024-01-13"},
+        ]
+        
+        for patient in mock_patients:
+            with st.expander(f"{patient['name']} (ID: {patient['id']})"):
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("Age", patient['age'])
+                with col2:
+                    risk_color = {"Low": "green", "Medium": "orange", "High": "red"}[patient['risk_level']]
+                    st.markdown(f"**Risk Level:** :{risk_color}[{patient['risk_level']}]")
+                with col3:
+                    st.metric("Last Visit", patient['last_visit'])
+                with col4:
+                    if st.button(f"View Details", key=f"view_{patient['id']}"):
+                        st.info(f"Would open detailed view for {patient['name']}")
+    
+    with tab2:
+        st.subheader("Recent Risk Analyses")
+        st.info("This section would show recent analyses performed by you or your team.")
+        
+        # Mock analysis history
+        analysis_data = {
+            "Date": ["2024-01-15", "2024-01-14", "2024-01-13", "2024-01-12"],
+            "Patient": ["John Doe", "Jane Smith", "Bob Wilson", "Alice Brown"],
+            "Risk Level": ["Medium", "Low", "High", "Low"],
+            "Confidence": ["85%", "92%", "78%", "89%"]
+        }
+        
+        df = pd.DataFrame(analysis_data)
+        st.dataframe(df, use_container_width=True)
+
+
+def render_admin_panel():
+    """Render admin panel interface"""
+    st.header("🔧 Admin Panel")
+    
+    tab1, tab2, tab3 = st.tabs(["System Status", "Analytics", "Settings"])
+    
+    with tab1:
+        st.subheader("System Health")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Active Users", "23", "2")
+        with col2:
+            st.metric("Predictions Today", "156", "12")
+        with col3:
+            st.metric("API Uptime", "99.8%")
+        with col4:
+            st.metric("Model Accuracy", "87.3%")
+        
+        st.markdown("---")
+        
+        # System logs (mock)
+        st.subheader("Recent System Events")
+        log_data = {
+            "Timestamp": ["2024-01-15 10:30:45", "2024-01-15 10:25:12", "2024-01-15 10:20:33"],
+            "Level": ["INFO", "WARNING", "INFO"],
+            "Event": [
+                "User login successful: doctor@healthcare.com",
+                "High prediction load detected", 
+                "Model retrained successfully"
+            ]
+        }
+        
+        log_df = pd.DataFrame(log_data)
+        st.dataframe(log_df, use_container_width=True)
+    
+    with tab2:
+        st.subheader("Usage Analytics")
+        
+        # Mock analytics data
+        dates = pd.date_range('2024-01-01', '2024-01-15', freq='D')
+        predictions = [20 + i*2 + (i%3)*5 for i in range(len(dates))]
+        
+        analytics_df = pd.DataFrame({
+            'Date': dates,
+            'Predictions': predictions
+        })
+        
+        fig = px.line(analytics_df, x='Date', y='Predictions', title='Daily Predictions')
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # User role distribution
+        role_data = {'Role': ['Doctors', 'Patients', 'Admins'], 'Count': [12, 8, 3]}
+        role_df = pd.DataFrame(role_data)
+        
+        fig2 = px.pie(role_df, values='Count', names='Role', title='User Role Distribution')
+        st.plotly_chart(fig2, use_container_width=True)
+    
+    with tab3:
+        st.subheader("System Settings")
+        
+        with st.form("system_settings"):
+            st.markdown("#### Model Configuration")
+            confidence_threshold = st.slider("Confidence Threshold", 0.0, 1.0, 0.7, 0.1)
+            auto_retrain = st.checkbox("Enable Auto-Retraining", True)
+            
+            st.markdown("#### Security Settings")
+            session_timeout = st.selectbox("Session Timeout (hours)", [1, 2, 4, 8, 24], index=2)
+            require_2fa = st.checkbox("Require Two-Factor Authentication", False)
+            
+            st.markdown("#### Notification Settings")
+            email_alerts = st.checkbox("Email Alerts for High-Risk Predictions", True)
+            daily_reports = st.checkbox("Daily Usage Reports", False)
+            
+            if st.form_submit_button("Save Settings", type="primary"):
+                st.success("Settings saved successfully!")
+
+
+def render_user_management():
+    """Render user management interface for admins"""
+    st.header("👤 User Management")
+    
+    tab1, tab2 = st.tabs(["User List", "Add New User"])
+    
+    with tab1:
+        st.subheader("Current Users")
+        
+        # Get users from backend (mock implementation)
+        users_data = {
+            "ID": ["U001", "U002", "U003", "U004"],
+            "Name": ["Dr. Jane Smith", "John Doe", "Alice Johnson", "Bob Wilson"],
+            "Email": ["doctor@healthcare.com", "patient@healthcare.com", "alice@healthcare.com", "bob@healthcare.com"],
+            "Role": ["Doctor", "Patient", "Doctor", "Patient"],
+            "Status": ["Active", "Active", "Active", "Inactive"],
+            "Last Login": ["2024-01-15 10:30", "2024-01-14 15:20", "2024-01-13 09:15", "Never"]
+        }
+        
+        users_df = pd.DataFrame(users_data)
+        
+        # Add action buttons
+        for idx, row in users_df.iterrows():
+            col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 2, 2, 1, 1, 1, 1])
+            
+            with col1:
+                st.write(row['ID'])
+            with col2:
+                st.write(row['Name'])
+            with col3:
+                st.write(row['Email'])
+            with col4:
+                role_color = "blue" if row['Role'] == "Doctor" else "green"
+                st.markdown(f":{role_color}[{row['Role']}]")
+            with col5:
+                status_color = "green" if row['Status'] == "Active" else "red"
+                st.markdown(f":{status_color}[{row['Status']}]")
+            with col6:
+                if st.button("Edit", key=f"edit_{idx}"):
+                    st.info(f"Edit user {row['Name']}")
+            with col7:
+                if st.button("Delete", key=f"delete_{idx}", type="secondary"):
+                    st.warning(f"Delete user {row['Name']}?")
+        
+        st.markdown("---")
+        
+    with tab2:
+        st.subheader("Add New User")
+        
+        with st.form("add_user_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                new_name = st.text_input("Full Name", placeholder="Enter full name")
+                new_email = st.text_input("Email", placeholder="user@healthcare.com")
+                new_password = st.text_input("Password", type="password", placeholder="Min 8 characters")
+            
+            with col2:
+                new_role = st.selectbox("Role", ["Patient", "Doctor", "Admin"])
+                is_active = st.checkbox("Active", value=True)
+                send_welcome = st.checkbox("Send Welcome Email", value=True)
+            
+            if st.form_submit_button("Create User", type="primary"):
+                if new_name and new_email and new_password:
+                    # Here you would integrate with the backend API
+                    st.success(f"User {new_name} created successfully!")
+                    st.info("In a real implementation, this would call the backend API to create the user.")
+                else:
+                    st.error("Please fill in all required fields.")
+
+
 def display_connection_status():
-    """Display backend connection status in sidebar"""
+    """Display backend connection status in sidebar - optimized with global caching"""
     st.sidebar.markdown("---")
     st.sidebar.subheader("System Status")
     
-    try:
-        if api_client.check_backend_health():
-            st.sidebar.markdown(
-                f"<div class='status-indicator status-success'>"
-                f"<span style='margin-right: 8px;'><i class='fas fa-check-circle'></i></span>"
-                "Backend Connected"
-                "</div>",
-                unsafe_allow_html=True
-            )
+    # Use the cached health check
+    backend_healthy = api_client.check_backend_health()
+    
+    if backend_healthy:
+        st.sidebar.markdown(
+            f"<div class='status-indicator status-success'>"
+            f"<span style='margin-right: 8px;'><i class='fas fa-check-circle'></i></span>"
+            "Backend Connected"
+            "</div>",
+            unsafe_allow_html=True
+        )
+        
+        # Display model info if available (cached)
+        model_info = api_client.get_model_info()
+        if model_info:
+            with st.sidebar.expander("Model Information", expanded=False):
+                st.markdown(f"**Model Type:** {model_info.get('model_type', 'N/A')}")
+                st.markdown(f"**Version:** {model_info.get('version', '1.0.0')}")
+                st.markdown(f"**Features:** {model_info.get('feature_count', 'N/A')}")
+                st.markdown(f"**Last Trained:** {model_info.get('last_trained', 'N/A')}")
             
-            # Display model info if available
-            model_info = api_client.get_model_info()
-            if model_info:
-                with st.sidebar.expander("Model Information", expanded=False):
-                    st.markdown(f"**Model Type:** {model_info.get('model_type', 'N/A')}")
-                    st.markdown(f"**Version:** {model_info.get('version', '1.0.0')}")
-                    st.markdown(f"**Features:** {model_info.get('feature_count', 'N/A')}")
-                    st.markdown(f"**Last Trained:** {model_info.get('last_trained', 'N/A')}")
-                
-        else:
-            st.sidebar.markdown(
-                f"<div class='status-indicator status-warning'>"
-                f"<span style='margin-right: 8px;'><i class='fas fa-exclamation-triangle'></i></span>"
-                "Backend Unavailable"
-                "</div>",
-                unsafe_allow_html=True
-            )
-    except Exception as e:
+    else:
         st.sidebar.markdown(
             f"<div class='status-indicator status-error'>"
             f"<span style='margin-right: 8px;'><i class='fas fa-times-circle'></i></span>"
@@ -391,7 +618,6 @@ def display_connection_status():
             "</div>",
             unsafe_allow_html=True
         )
-        st.sidebar.error(f"Error: {str(e)}")
 
 def main():
     """Main application"""
@@ -422,11 +648,25 @@ python -m uvicorn app:app --reload""")
             st.rerun()
         return
     
-    # Sidebar navigation with icons
+    # Sidebar navigation with authentication-aware options
+    render_user_info()  # Display user info in sidebar
+    
     st.sidebar.title("Navigation")
+    
+    # Build navigation options based on user role
+    nav_options = ["🏠 Risk Assessment"]
+    
+    if is_doctor():
+        nav_options.extend(["📊 Dashboard", "👥 Patient Management"])
+    
+    if is_admin():
+        nav_options.extend(["🔧 Admin Panel", "👤 User Management"])
+    
+    nav_options.append("ℹ️ About")
+    
     page = st.sidebar.radio(
         "Go to",
-        ["🏠 Risk Assessment", "📊 Dashboard", "ℹ️ About"],
+        nav_options,
         index=0
     )
     
@@ -531,10 +771,31 @@ python -m uvicorn app:app --reload""")
                                unsafe_allow_html=True)
     
     elif "📊 Dashboard" in page:
-        st.header("📊 Healthcare Analytics Dashboard")
-        # Pass patient data to dashboard if available
-        patient_data = st.session_state.get('patient_data', None)
-        create_dashboard(patient_data)
+        if is_doctor():
+            st.header("📊 Healthcare Analytics Dashboard")
+            # Pass patient data to dashboard if available
+            patient_data = st.session_state.get('patient_data', None)
+            create_dashboard(patient_data)
+        else:
+            st.error("🙅‍♂️ Access denied. Doctor or Admin access required.")
+    
+    elif "👥 Patient Management" in page:
+        if is_doctor():
+            render_patient_management()
+        else:
+            st.error("🙅‍♂️ Access denied. Doctor or Admin access required.")
+    
+    elif "🔧 Admin Panel" in page:
+        if is_admin():
+            render_admin_panel()
+        else:
+            st.error("🙅‍♂️ Access denied. Administrator access required.")
+    
+    elif "👤 User Management" in page:
+        if is_admin():
+            render_user_management()
+        else:
+            st.error("🙅‍♂️ Access denied. Administrator access required.")
     
     elif "ℹ️ About" in page:
         st.header("About the System")

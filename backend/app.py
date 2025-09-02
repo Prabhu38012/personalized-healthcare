@@ -13,9 +13,23 @@ import numpy as np
 try:
     # Try relative import first (when running from backend directory)
     from routes.predict import router as predict_router
+    try:
+        from auth.routes import router as auth_router
+        auth_available = True
+    except ImportError:
+        auth_router = None
+        auth_available = False
+        print("Authentication module not available - running without auth")
 except ImportError:
     # Fallback to absolute import (when running from project root)
     from backend.routes.predict import router as predict_router
+    try:
+        from backend.auth.routes import router as auth_router
+        auth_available = True
+    except ImportError:
+        auth_router = None
+        auth_available = False
+        print("Authentication module not available - running without auth")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -36,8 +50,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include prediction routes
+# Include routes
 app.include_router(predict_router, prefix="/api", tags=["predictions"])
+if auth_available and auth_router:
+    app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
+    print("Authentication routes enabled")
+else:
+    print("Running in demo mode without authentication")
 
 @app.get("/")
 async def root():
