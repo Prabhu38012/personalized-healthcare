@@ -1,57 +1,109 @@
 @echo off
-echo 🏥 Starting Personalized Healthcare System...
+echo DEBUG: Starting setup process...
 echo.
 
-REM Check Python version
-echo Checking Python version...
+echo DEBUG: Current directory is:
+cd
+echo.
+
+echo DEBUG: Files in current directory:
+dir /b
+echo.
+
+echo DEBUG: Checking for requirements.txt...
+if exist "requirements.txt" (
+    echo DEBUG: requirements.txt found - OK
+) else (
+    echo DEBUG: requirements.txt NOT found - ERROR
+    echo Make sure you're in the personalized-healthcare directory
+    pause
+    exit /b 1
+)
+
+echo DEBUG: Checking Python installation...
 python --version
 if %errorlevel% neq 0 (
-    echo ❌ Python is not installed or not in PATH.
-    echo Please install Python 3.8+ and add it to your PATH.
+    echo DEBUG: Python command failed - ERROR
+    echo Please install Python and add to PATH
     pause
     exit /b 1
-)
-echo.
-
-REM Check if we're in the right directory
-if not exist "requirements.txt" (
-    echo ❌ Error: requirements.txt not found.
-    echo Please run this script from the personalized-healthcare directory.
-    pause
-    exit /b 1
+) else (
+    echo DEBUG: Python found - OK
 )
 
-REM Check if virtual environment exists
-if not exist "venv" (
-    echo Creating virtual environment...
-    python -m venv venv
+echo DEBUG: Testing venv module...
+python -m venv --help >nul 2>&1
+if %errorlevel% neq 0 (
+    echo DEBUG: venv module not available - ERROR
+    echo Trying alternative virtualenv...
+    pip install virtualenv
+    virtualenv --version
     if %errorlevel% neq 0 (
-        echo ❌ Failed to create virtual environment. Please ensure Python is installed.
+        echo DEBUG: virtualenv also failed - ERROR
+        pause
+        exit /b 1
+    ) else (
+        echo DEBUG: Using virtualenv instead of venv
+        virtualenv venv
+    )
+) else (
+    echo DEBUG: venv module available - OK
+    echo DEBUG: Checking if venv folder already exists...
+    if exist "venv" (
+        echo DEBUG: venv folder already exists - skipping creation
+    ) else (
+        echo DEBUG: Creating virtual environment with python -m venv venv...
+        python -m venv venv
+        if %errorlevel% neq 0 (
+            echo DEBUG: venv creation failed - ERROR
+            pause
+            exit /b 1
+        ) else (
+            echo DEBUG: venv creation successful - OK
+        )
+    )
+)
+
+echo.
+echo DEBUG: Checking if venv folder exists now...
+if exist "venv" (
+    echo DEBUG: venv folder exists - SUCCESS
+    dir venv /b
+) else (
+    echo DEBUG: venv folder still missing - FAILURE
+    echo Something went wrong during creation
+    pause
+    exit /b 1
+)
+
+echo.
+echo DEBUG: Attempting to activate virtual environment...
+if exist "venv\Scripts\activate.bat" (
+    echo DEBUG: activate.bat found - OK
+    call venv\Scripts\activate.bat
+) else (
+    echo DEBUG: activate.bat not found - trying alternative
+    if exist "venv\Scripts\activate" (
+        call venv\Scripts\activate
+    ) else (
+        echo DEBUG: No activation script found - ERROR
         pause
         exit /b 1
     )
 )
 
-REM Activate virtual environment
-echo Activating virtual environment...
-call venv\Scripts\activate.bat
-
-REM Install dependencies
-echo Installing dependencies...
+echo.
+echo DEBUG: Installing requirements...
 pip install -r requirements.txt
 if %errorlevel% neq 0 (
-    echo ❌ Failed to install dependencies.
+    echo DEBUG: pip install failed - ERROR
     pause
     exit /b 1
+) else (
+    echo DEBUG: pip install successful - OK
 )
 
 echo.
-echo ✅ Setup complete!
-echo.
-echo 📋 To run the application:
-echo    1. Backend:  cd backend ^&^& uvicorn app:app --reload --host 0.0.0.0 --port 8000
-echo    2. Frontend: cd frontend ^&^& streamlit run app.py --server.port 8501
-echo.
-echo 🌐 Then open: http://localhost:8501
-echo.
+echo DEBUG: Setup completed successfully!
+echo DEBUG: venv folder should now exist
 pause
