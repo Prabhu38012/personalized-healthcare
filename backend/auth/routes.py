@@ -95,8 +95,21 @@ async def login(request: Request, login_data: LoginRequest):
             )
         
         # Verify password
-        import bcrypt
-        if not bcrypt.checkpw(login_data.password.encode('utf-8'), user.hashed_password.encode('utf-8')):
+        def verify_password(plain_password: str, hashed_password: str) -> bool:
+            """Verify password with fallback for different hash types"""
+            try:
+                import bcrypt
+                return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+            except Exception:
+                # Fallback for hashlib-based passwords
+                if ':' in hashed_password:
+                    hash_part, salt = hashed_password.split(':', 1)
+                    import hashlib
+                    computed_hash = hashlib.pbkdf2_hmac('sha256', plain_password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
+                    return computed_hash == hash_part
+                return False
+        
+        if not verify_password(login_data.password, user.hashed_password):
             user_store.increment_login_attempts(login_data.email)
             log_security_event("LOGIN_FAILED", login_data.email, "Invalid password")
             raise HTTPException(
@@ -234,6 +247,42 @@ async def register_user(user_data: UserCreate, admin_user = Depends(get_admin_us
         )
 
 
+@router.post("/signup", response_model=UserResponse)
+async def signup_user(user_data: UserCreate):
+    """Public signup endpoint for new users"""
+    try:
+        # Only allow patient role for public signup
+        if user_data.role != UserRole.PATIENT:
+            user_data.role = UserRole.PATIENT
+        
+        # Create new user
+        new_user = user_store.create_user(user_data)
+        
+        log_security_event("USER_SIGNUP", user_data.email, "Public signup")
+        
+        return UserResponse(
+            id=new_user.id,
+            email=new_user.email,
+            full_name=new_user.full_name,
+            role=new_user.role,
+            is_active=new_user.is_active,
+            created_at=new_user.created_at,
+            last_login=new_user.last_login
+        )
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        log_security_event("USER_SIGNUP_ERROR", user_data.email, f"Error: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Signup failed"
+        )
+
+
 @router.put("/users/{user_id}", response_model=UserResponse)
 async def update_user(
     user_id: str, 
@@ -275,8 +324,21 @@ async def change_password(
 ):
     """Change user password"""
     # Verify current password
-    import bcrypt
-    if not bcrypt.checkpw(password_data.current_password.encode('utf-8'), current_user.hashed_password.encode('utf-8')):
+    def verify_password(plain_password: str, hashed_password: str) -> bool:
+        """Verify password with fallback for different hash types"""
+        try:
+            import bcrypt
+            return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+        except Exception:
+            # Fallback for hashlib-based passwords
+            if ':' in hashed_password:
+                hash_part, salt = hashed_password.split(':', 1)
+                import hashlib
+                computed_hash = hashlib.pbkdf2_hmac('sha256', plain_password.encode('utf-8'), salt.encode('utf-8'), 100000).hex()
+                return computed_hash == hash_part
+            return False
+    
+    if not verify_password(password_data.current_password, current_user.hashed_password):
         log_security_event("PASSWORD_CHANGE_FAILED", current_user.email, "Invalid current password")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -284,8 +346,18 @@ async def change_password(
         )
     
     # Update password
-    import bcrypt
-    current_user.hashed_password = bcrypt.hashpw(password_data.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    def get_password_hash(password: str) -> str:
+        try:
+            import bcrypt
+            return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        except Exception:
+            # Fallback to hashlib if bcrypt fails
+            import hashlib
+            import secrets
+            salt = secrets.token_hex(16)
+            return hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000).hex() + ':' + salt
+    
+    current_user.hashed_password = get_password_hash(password_data.new_password)
     
     log_security_event("PASSWORD_CHANGED", current_user.email, "Password changed successfully")
     

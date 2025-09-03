@@ -147,8 +147,15 @@ class UserStore:
         
         def get_password_hash(password: str) -> str:
             """Simple password hashing for default users"""
-            import bcrypt
-            return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            try:
+                import bcrypt
+                return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            except Exception as e:
+                # Fallback to hashlib if bcrypt fails
+                import hashlib
+                import secrets
+                salt = secrets.token_hex(16)
+                return hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000).hex() + ':' + salt
         
         # Default admin user
         admin_id = secrets_module.token_urlsafe(16)
@@ -207,7 +214,15 @@ class UserStore:
         import secrets
         
         def get_password_hash(password: str) -> str:
-            return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            try:
+                import bcrypt
+                return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            except Exception as e:
+                # Fallback to hashlib if bcrypt fails
+                import hashlib
+                import secrets
+                salt = secrets.token_hex(16)
+                return hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt.encode('utf-8'), 100000).hex() + ':' + salt
         
         # Check if user already exists
         if self.get_user_by_email(user_data.email):

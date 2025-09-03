@@ -107,6 +107,39 @@ class AuthManager:
                 return {}
         except:
             return {}
+    
+    def signup(self, email: str, password: str, full_name: str, role: str = "patient") -> tuple[bool, str, dict]:
+        """
+        Attempt to sign up a new user
+        Returns: (success, message, user_data)
+        """
+        try:
+            # Use the public signup endpoint
+            response = requests.post(
+                f"{self.auth_endpoint}/signup",
+                json={
+                    "email": email, 
+                    "password": password, 
+                    "full_name": full_name, 
+                    "role": role
+                },
+                timeout=10
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                return True, "Account created successfully! Please log in.", data
+            elif response.status_code == 400:
+                error_detail = response.json().get("detail", "Signup failed")
+                return False, error_detail, {}
+            else:
+                error_detail = response.json().get("detail", "Signup failed")
+                return False, error_detail, {}
+                
+        except requests.RequestException as e:
+            return False, f"Connection error: {str(e)}", {}
+        except Exception as e:
+            return False, f"Unexpected error: {str(e)}", {}
 
 
 def init_session_state():
@@ -216,6 +249,9 @@ def render_login_page():
     .form-container {
         margin-top: 1.5rem;
     }
+    .tab-container {
+        margin-bottom: 1.5rem;
+    }
     </style>
     """, unsafe_allow_html=True)
     
@@ -229,57 +265,131 @@ def render_login_page():
         st.markdown("""
         <div class="login-header">
             <h1 class="login-title">🏥 Healthcare System</h1>
-            <p class="login-subtitle">Sign in to access your account</p>
+            <p class="login-subtitle">Access your healthcare account</p>
         </div>
         """, unsafe_allow_html=True)
         
-        # Login form
-        with st.form("login_form", clear_on_submit=False):
-            st.markdown('<div class="form-container">', unsafe_allow_html=True)
-            
-            email = st.text_input(
-                "Email Address",
-                placeholder="Enter your email address",
-                help="Use your registered healthcare system email",
-                label_visibility="visible"
-            )
-            
-            password = st.text_input(
-                "Password",
-                type="password",
-                placeholder="Enter your password",
-                help="Your secure password",
-                label_visibility="visible"
-            )
-            
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Submit button with custom styling
-            submitted = st.form_submit_button(
-                "Sign In",
-                type="primary",
-                use_container_width=True
-            )
-            
-            if submitted:
-                if not email or not password:
-                    st.error("⚠️ Please enter both email and password")
-                else:
-                    with st.spinner("🔐 Authenticating..."):
-                        success, message, user_data = st.session_state.auth_manager.login(email, password)
-                    
-                    if success:
-                        # Store authentication data
-                        st.session_state.authenticated = True
-                        st.session_state.user_data = user_data.get('user', {})
-                        st.session_state.access_token = user_data.get('token', {}).get('access_token')
-                        st.session_state.login_time = datetime.now().isoformat()
-                        
-                        st.success(f"✅ Welcome, {st.session_state.user_data.get('full_name', 'User')}!")
-                        time.sleep(1)
-                        st.rerun()
+        # Tab selection for Login/Signup
+        tab1, tab2 = st.tabs(["🔐 Sign In", "📝 Sign Up"])
+        
+        with tab1:
+            # Login form
+            with st.form("login_form", clear_on_submit=False):
+                st.markdown('<div class="form-container">', unsafe_allow_html=True)
+                
+                email = st.text_input(
+                    "Email Address",
+                    placeholder="Enter your email address",
+                    help="Use your registered healthcare system email",
+                    label_visibility="visible"
+                )
+                
+                password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Enter your password",
+                    help="Your secure password",
+                    label_visibility="visible"
+                )
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Submit button with custom styling
+                submitted = st.form_submit_button(
+                    "Sign In",
+                    type="primary",
+                    use_container_width=True
+                )
+                
+                if submitted:
+                    if not email or not password:
+                        st.error("⚠️ Please enter both email and password")
                     else:
-                        st.error(f"❌ {message}")
+                        with st.spinner("🔐 Authenticating..."):
+                            success, message, user_data = st.session_state.auth_manager.login(email, password)
+                        
+                        if success:
+                            # Store authentication data
+                            st.session_state.authenticated = True
+                            st.session_state.user_data = user_data.get('user', {})
+                            st.session_state.access_token = user_data.get('token', {}).get('access_token')
+                            st.session_state.login_time = datetime.now().isoformat()
+                            
+                            st.success(f"✅ Welcome, {st.session_state.user_data.get('full_name', 'User')}!")
+                            time.sleep(1)
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {message}")
+        
+        with tab2:
+            # Signup form
+            with st.form("signup_form", clear_on_submit=False):
+                st.markdown('<div class="form-container">', unsafe_allow_html=True)
+                
+                full_name = st.text_input(
+                    "Full Name",
+                    placeholder="Enter your full name",
+                    help="Your complete name as it should appear in the system",
+                    label_visibility="visible"
+                )
+                
+                signup_email = st.text_input(
+                    "Email Address",
+                    placeholder="Enter your email address",
+                    help="This will be your login email",
+                    label_visibility="visible"
+                )
+                
+                signup_password = st.text_input(
+                    "Password",
+                    type="password",
+                    placeholder="Create a secure password",
+                    help="Must be at least 8 characters with uppercase, lowercase, and numbers",
+                    label_visibility="visible"
+                )
+                
+                confirm_password = st.text_input(
+                    "Confirm Password",
+                    type="password",
+                    placeholder="Confirm your password",
+                    help="Re-enter your password to confirm",
+                    label_visibility="visible"
+                )
+                
+                role = st.selectbox(
+                    "Account Type",
+                    ["patient", "doctor", "nurse"],
+                    help="Select your role in the healthcare system",
+                    label_visibility="visible"
+                )
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Submit button with custom styling
+                signup_submitted = st.form_submit_button(
+                    "Create Account",
+                    type="primary",
+                    use_container_width=True
+                )
+                
+                if signup_submitted:
+                    if not all([full_name, signup_email, signup_password, confirm_password]):
+                        st.error("⚠️ Please fill in all fields")
+                    elif signup_password != confirm_password:
+                        st.error("⚠️ Passwords do not match")
+                    elif len(signup_password) < 8:
+                        st.error("⚠️ Password must be at least 8 characters long")
+                    else:
+                        with st.spinner("📝 Creating your account..."):
+                            success, message, user_data = st.session_state.auth_manager.signup(
+                                signup_email, signup_password, full_name, role
+                            )
+                        
+                        if success:
+                            st.success(f"✅ {message}")
+                            st.info("Please use the 'Sign In' tab to log in with your new account.")
+                        else:
+                            st.error(f"❌ {message}")
         
         st.markdown('</div>', unsafe_allow_html=True)  # Close login-container
     
