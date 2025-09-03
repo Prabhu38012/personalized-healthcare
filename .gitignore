@@ -28,6 +28,11 @@ ENV/
 .venv/
 .env/
 
+# Environment Variables (CRITICAL - Contains API Keys)
+.env
+*.env
+!.env.example
+
 # IDE
 .vscode/
 .idea/
@@ -81,6 +86,12 @@ tests/temp/
 .coverage
 .pytest_cache/
 htmlcov/
+
+# Debug and diagnostic files
+check_*.py
+diagnose_*.py
+debug_*.py
+*_debug.py
 
 # Development containers
 .devcontainer/

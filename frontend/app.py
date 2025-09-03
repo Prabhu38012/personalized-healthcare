@@ -9,6 +9,7 @@ from components.auth import (
     render_user_info, require_auth, get_auth_headers, is_admin, is_doctor,
     show_development_credentials
 )
+from components.chatbot import render_chatbot_interface, render_chatbot_sidebar
 from pages.dashboard import create_dashboard, calculate_risk_score
 from utils.api_client import HealthcareAPI
 from utils.caching import cleanup_expired_cache, get_cache_stats
@@ -654,7 +655,7 @@ python -m uvicorn app:app --reload""")
     st.sidebar.title("Navigation")
     
     # Build navigation options based on user role
-    nav_options = ["🏠 Risk Assessment"]
+    nav_options = ["🏠 Risk Assessment", "🤖 AI Assistant"]
     
     if is_doctor():
         nav_options.extend(["📊 Dashboard", "👥 Patient Management"])
@@ -672,6 +673,10 @@ python -m uvicorn app:app --reload""")
     
     # Display connection status in sidebar
     display_connection_status()
+    
+    # Add sidebar chatbot (only show if not on main chatbot page)
+    if "🤖 AI Assistant" not in page:
+        render_chatbot_sidebar()
     
     # Add footer
     st.sidebar.markdown("---")
@@ -757,9 +762,9 @@ python -m uvicorn app:app --reload""")
                     )
                 
                 with col2_dl:
-                    if st.button("🔄 New Analysis", use_container_width=True):
-                        if 'prediction' in st.session_state:
-                            del st.session_state['prediction']
+                    if st.button("🤖 Ask AI about Results", use_container_width=True, help="Get AI explanation of your risk assessment"):
+                        # Store the prediction for the chatbot to access
+                        st.session_state['last_prediction'] = prediction
                         st.rerun()
             else:
                 with st.container():
@@ -769,6 +774,9 @@ python -m uvicorn app:app --reload""")
                                "<img src='https://img.icons8.com/color/200/000000/medical-doctor.png' width='150' style='opacity: 0.7; margin: 1rem 0;'/>"
                                "</div>", 
                                unsafe_allow_html=True)
+    
+    elif "🤖 AI Assistant" in page:
+        render_chatbot_interface()
     
     elif "📊 Dashboard" in page:
         if is_doctor():

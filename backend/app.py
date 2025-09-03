@@ -9,6 +9,10 @@ import uvicorn
 import joblib
 import pandas as pd
 import numpy as np
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Import prediction routes
 try:
@@ -23,6 +27,25 @@ except ImportError:
     except ImportError as e:
         print(f"✗ Failed to import prediction routes: {e}")
         raise
+
+# Import chatbot routes
+chatbot_router = None
+chatbot_available = False
+
+try:
+    from backend.routes.chatbot import router as chatbot_router
+    chatbot_available = True
+    print("✓ Chatbot routes imported successfully (absolute)")
+except ImportError:
+    try:
+        from routes.chatbot import router as chatbot_router
+        chatbot_available = True
+        print("✓ Chatbot routes imported successfully (relative)")
+    except ImportError as e:
+        print(f"Failed to import chatbot routes: {e}")
+        chatbot_router = None
+        chatbot_available = False
+        print("⚠️  Chatbot module not available - running without AI chat")
 
 # Import authentication routes with absolute imports first
 auth_router = None
@@ -57,9 +80,10 @@ app = FastAPI(
 )
 
 # CORS middleware for frontend integration
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8501,http://localhost:8000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific origins
+    allow_origins=cors_origins,  # Load from environment variables
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -68,6 +92,16 @@ app.add_middleware(
 # Include routes
 app.include_router(predict_router, prefix="/api", tags=["predictions"])
 print("✓ Prediction routes registered at /api")
+
+if chatbot_available and chatbot_router:
+    app.include_router(chatbot_router, prefix="/api", tags=["chatbot"])
+    print("✓ Chatbot routes registered at /api")
+    print("Available chatbot endpoints:")
+    print("  - POST /api/chat")
+    print("  - GET /api/chat/health")
+    print("  - POST /api/chat/explain-risk")
+else:
+    print("⚠️  Running without AI chatbot functionality")
 
 if auth_available and auth_router:
     app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
