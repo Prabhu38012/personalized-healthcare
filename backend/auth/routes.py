@@ -188,30 +188,48 @@ async def login(request: Request, login_data: LoginRequest):
 @router.get("/test-connection")
 async def test_connection():
     """Test if authentication service is working"""
-    users = database_user_store.get_all_users()
-    return {
-        "status": "ok",
-        "message": "Authentication service is running with database storage",
-        "users_available": len(users),
-        "storage_type": "SQLite Database",
-        "test_credentials": {
-            "admin": {"email": "admin@healthcare.com", "password": "Admin123!"},
-            "doctor": {"email": "doctor@healthcare.com", "password": "Doctor123!"},
-            "patient": {"email": "patient@healthcare.com", "password": "Patient123!"}
+    try:
+        users = database_user_store.get_all_users()
+        return {
+            "status": "ok",
+            "message": "Authentication service is running with database storage",
+            "users_available": len(users),
+            "storage_type": "SQLite Database",
+            "test_credentials": {
+                "admin": {"email": "admin@healthcare.com", "password": "Admin123!"},
+                "doctor": {"email": "doctor@healthcare.com", "password": "Doctor123!"},
+                "patient": {"email": "patient@healthcare.com", "password": "Patient123!"}
+            }
         }
-    }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Authentication service error: {str(e)}",
+            "users_available": 0,
+            "storage_type": "SQLite Database"
+        }
 
 @router.get("/health")
 async def auth_health():
     """Health check for auth service"""
-    users = database_user_store.get_all_users()
-    return {
-        "status": "healthy",
-        "service": "authentication",
-        "storage_type": "SQLite Database",
-        "users_loaded": len(users) > 0,
-        "total_users": len(users)
-    }
+    try:
+        users = database_user_store.get_all_users()
+        return {
+            "status": "healthy",
+            "service": "authentication",
+            "storage_type": "SQLite Database",
+            "users_loaded": len(users) > 0,
+            "total_users": len(users)
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "service": "authentication",
+            "error": str(e),
+            "storage_type": "SQLite Database",
+            "users_loaded": False,
+            "total_users": 0
+        }
 
 @router.post("/logout")
 async def logout(current_user = Depends(get_current_user)):

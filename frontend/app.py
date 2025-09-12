@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from components.forms import PatientInputForm
+from components.lab_forms import LabPatientInputForm
 from components.auth import (
     init_session_state, check_session_validity, render_login_page,
     render_user_info, require_auth, get_auth_headers, is_admin, is_doctor,
@@ -11,7 +12,6 @@ from components.auth import (
 )
 from components.chatbot import render_chatbot_interface, render_chatbot_sidebar
 from components.prescription_chatbot import render_prescription_chatbot
-from pages.dashboard import create_dashboard, calculate_risk_score
 from pages.health_log import create_health_log_page
 from utils.api_client import HealthcareAPI
 from utils.caching import cleanup_expired_cache, get_cache_stats
@@ -417,6 +417,327 @@ def display_risk_factors(prediction):
         if 'llm_analysis' in st.session_state.get('prediction_result', {}):
             display_llm_analysis(st.session_state.prediction_result['llm_analysis'])
 
+def display_prediction_results(result, analysis_type):
+    """Display comprehensive prediction results"""
+    st.markdown(f"### 📊 Health Risk Analysis Results ({analysis_type})")
+    
+    # Get patient data from result - try multiple sources
+    patient_data = {}
+    
+    # Try different data sources in the result
+    if 'data' in result and result['data']:
+        patient_data.update(result['data'])
+    
+    # Also check for patient_data key
+    if 'patient_data' in result and result['patient_data']:
+        patient_data.update(result['patient_data'])
+    
+    # Check extraction_info for additional data
+    if 'extraction_info' in result and 'extracted_data' in result['extraction_info']:
+        extracted = result['extraction_info']['extracted_data']
+        if extracted:
+            patient_data.update(extracted)
+    
+    # Debug: Show what data we have
+    if not patient_data:
+        st.warning("⚠️ No patient data found in prediction result. Raw result keys: " + str(list(result.keys())))
+    
+    # Risk Level Display
+    risk_level = result.get('risk_level', 'Unknown')
+    risk_probability = result.get('risk_probability', 0)
+    confidence = result.get('confidence', 0)
+    
+    # Color coding for risk levels
+    risk_colors = {
+        'Low': 'green',
+        'Medium': 'orange', 
+        'High': 'red'
+    }
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Risk Level", risk_level, 
+                 delta_color="inverse" if risk_level != "Low" else "normal")
+    
+    with col2:
+        st.metric("Risk Probability", f"{risk_probability:.1%}")
+    
+    with col3:
+        st.metric("Confidence", f"{confidence:.1%}")
+    
+    with col4:
+        # Extract BMI from the prediction result or calculate it
+        bmi_value = 0.0
+        
+        # Try multiple sources for BMI data
+        # 1. Direct BMI from result data
+        if 'data' in result and result['data'] is not None and 'bmi' in result['data'] and result['data']['bmi'] is not None:
+            bmi_value = float(result['data']['bmi'])
+        # 2. BMI from patient_data in session state
+        elif patient_data.get('bmi') is not None:
+            bmi_value = float(patient_data['bmi'])
+        # 3. Calculate from weight and height in patient_data
+        elif patient_data.get('weight') and patient_data.get('height'):
+            try:
+                weight = float(patient_data.get('weight', 0))
+                height = float(patient_data.get('height', 0))
+                if weight > 0 and height > 0:
+                    bmi_value = weight / ((height / 100) ** 2)
+            except (ValueError, TypeError):
+                pass
+        # 4. Calculate from weight and height in result data
+        elif 'data' in result and result['data'] is not None:
+            data = result['data']
+            if data.get('weight') and data.get('height'):
+                try:
+                    weight = float(data.get('weight', 0))
+                    height = float(data.get('height', 0))
+                    if weight > 0 and height > 0:
+                        bmi_value = weight / ((height / 100) ** 2)
+                except (ValueError, TypeError):
+                    pass
+        # 5. Try extraction info as fallback
+        elif 'extraction_info' in result:
+            extracted_data = result.get('extraction_info', {}).get('extracted_data', {})
+            if 'bmi' in extracted_data and extracted_data['bmi'] is not None:
+                bmi_value = float(extracted_data['bmi'])
+            elif 'weight' in extracted_data and 'height' in extracted_data:
+                try:
+                    weight = float(extracted_data.get('weight', 0))
+                    height = float(extracted_data.get('height', 0))
+                    if weight > 0 and height > 0:
+                        bmi_value = weight / ((height / 100) ** 2)
+                except (ValueError, TypeError):
+                    pass
+        
+        # BMI classification
+        if bmi_value > 0:
+            if bmi_value < 18.5:
+                bmi_status = "Underweight"
+            elif bmi_value < 25:
+                bmi_status = "Normal"
+            elif bmi_value < 30:
+                bmi_status = "Overweight"
+            else:
+                bmi_status = "Obese"
+        else:
+            bmi_status = "Unknown"
+        
+        st.metric("BMI", f"{bmi_value:.1f}" if bmi_value > 0 else "N/A", bmi_status)
+    
+    # Vital Statistics Section
+    st.markdown("### 📊 Vital Statistics")
+    
+    # Create columns for better organization
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Blood Pressure - try multiple field names
+        systolic = patient_data.get('systolic_bp') or patient_data.get('resting_bp')
+        diastolic = patient_data.get('diastolic_bp') or patient_data.get('diastolic')
+        
+        if systolic is not None and diastolic is not None:
+            bp_status = "Normal"
+            bp_color = "green"
+            if systolic >= 140 or diastolic >= 90:
+                bp_status = "High (Hypertension)"
+                bp_color = "red"
+            elif systolic >= 120 or diastolic >= 80:
+                bp_status = "Elevated"
+                bp_color = "orange"
+            
+            st.metric(
+                "Blood Pressure", 
+                f"{systolic}/{diastolic} mmHg",
+                bp_status
+            )
+        else:
+            # Show what BP data we have for debugging
+            bp_fields = {k: v for k, v in patient_data.items() if 'bp' in k.lower() or 'pressure' in k.lower() or 'systolic' in k.lower() or 'diastolic' in k.lower()}
+            if bp_fields:
+                st.metric("Blood Pressure", "Available fields: " + str(bp_fields))
+    
+    with col2:
+        # Cholesterol - try multiple field names
+        total_chol = patient_data.get('total_cholesterol') or patient_data.get('cholesterol')
+        if total_chol is not None:
+            chol_status = "Normal"
+            chol_color = "green"
+            if total_chol >= 240:
+                chol_status = "High"
+                chol_color = "red"
+            elif total_chol >= 200:
+                chol_status = "Borderline High"
+                chol_color = "orange"
+            
+            st.metric(
+                "Total Cholesterol",
+                f"{total_chol} mg/dL",
+                chol_status
+            )
+        else:
+            # Show available cholesterol fields for debugging
+            chol_fields = {k: v for k, v in patient_data.items() if 'chol' in k.lower()}
+            if chol_fields:
+                st.metric("Cholesterol", "Available: " + str(chol_fields))
+    
+    with col3:
+        # BMI (already calculated above)
+        bmi_value = 0.0
+        if 'bmi' in patient_data and patient_data['bmi'] is not None:
+            bmi_value = float(patient_data['bmi'])
+        elif 'weight' in patient_data and 'height' in patient_data:
+            try:
+                weight = float(patient_data.get('weight', 0))
+                height = float(patient_data.get('height', 0))
+                if weight > 0 and height > 0:
+                    bmi_value = weight / ((height / 100) ** 2)
+            except (ValueError, TypeError):
+                pass
+        
+        if bmi_value > 0:
+            if bmi_value < 18.5:
+                bmi_status = "Underweight"
+                bmi_color = "orange"
+            elif bmi_value < 25:
+                bmi_status = "Normal"
+                bmi_color = "green"
+            elif bmi_value < 30:
+                bmi_status = "Overweight"
+                bmi_color = "orange"
+            else:
+                bmi_status = "Obese"
+                bmi_color = "red"
+            
+            st.metric(
+                "BMI", 
+                f"{bmi_value:.1f}",
+                bmi_status
+            )
+    
+    # Risk Level Indicator
+    st.markdown("### 📈 Risk Assessment")
+    if risk_level in risk_colors:
+        st.markdown(f"""
+        <div style="padding: 15px; border-radius: 5px; background-color: {risk_colors[risk_level]}20; border-left: 4px solid {risk_colors[risk_level]};">
+            <h4 style="margin: 0; color: {risk_colors[risk_level]};">{risk_level} Risk</h4>
+            <p style="margin: 5px 0 0 0;">Probability: {risk_probability:.1%} • Confidence: {confidence:.1%}</p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    # Risk Factors
+    risk_factors = result.get('risk_factors', [])
+    if risk_factors:
+        st.markdown("### ⚠️ Identified Risk Factors")
+        for i, factor in enumerate(risk_factors, 1):
+            st.write(f"{i}. {factor}")
+    
+    # Recommendations
+    recommendations = result.get('recommendations', [])
+    if recommendations:
+        st.markdown("### 💡 Health Recommendations")
+        for i, rec in enumerate(recommendations, 1):
+            st.write(f"{i}. {rec}")
+    
+    # LLM Analysis (if available)
+    llm_analysis = result.get('llm_analysis')
+    if llm_analysis and llm_analysis.get('analysis_available'):
+        st.markdown("### 🤖 AI-Powered Insights")
+        
+        # Summary
+        summary = llm_analysis.get('summary')
+        if summary:
+            st.markdown("#### Summary")
+            st.write(summary)
+        
+        # Key Risk Factors
+        key_risk_factors = llm_analysis.get('key_risk_factors', [])
+        if key_risk_factors:
+            st.markdown("#### Key Risk Factors Identified by AI")
+            for factor in key_risk_factors:
+                st.write(f"• {factor}")
+        
+        # Health Implications
+        health_implications = llm_analysis.get('health_implications')
+        if health_implications:
+            st.markdown("#### Health Implications")
+            st.write(health_implications)
+        
+        # AI Recommendations
+        ai_recommendations = llm_analysis.get('recommendations', [])
+        if ai_recommendations:
+            st.markdown("#### AI Recommendations")
+            for rec in ai_recommendations:
+                st.write(f"• {rec}")
+        
+        # Urgency Level
+        urgency_level = llm_analysis.get('urgency_level')
+        if urgency_level:
+            urgency_colors = {
+                'low': 'green',
+                'medium': 'orange',
+                'high': 'red'
+            }
+            color = urgency_colors.get(urgency_level.lower(), 'blue')
+            st.markdown(f"""
+            <div style="padding: 8px; border-radius: 4px; background-color: {color}20; border-left: 3px solid {color};">
+                <strong>Urgency Level:</strong> {urgency_level.title()}
+            </div>
+            """, unsafe_allow_html=True)
+    
+    elif llm_analysis and not llm_analysis.get('analysis_available'):
+        reason = llm_analysis.get('reason', 'Unknown reason')
+        st.info(f"🤖 AI Analysis not available: {reason}")
+    
+    # Export Results
+    st.markdown("### 📄 Export Results")
+    if st.button("📋 Copy Results to Clipboard"):
+        results_text = format_results_for_export(result, analysis_type)
+        st.code(results_text, language="text")
+        st.success("Results formatted for copying!")
+
+def format_results_for_export(result, analysis_type):
+    """Format results for export/copying"""
+    risk_level = result.get('risk_level', 'Unknown')
+    risk_probability = result.get('risk_probability', 0)
+    confidence = result.get('confidence', 0)
+    
+    text = f"""HEALTH RISK ANALYSIS RESULTS ({analysis_type})
+{'='*50}
+
+RISK ASSESSMENT:
+- Risk Level: {risk_level}
+- Risk Probability: {risk_probability:.1%}
+- Confidence: {confidence:.1%}
+
+RISK FACTORS:
+"""
+    
+    risk_factors = result.get('risk_factors', [])
+    for i, factor in enumerate(risk_factors, 1):
+        text += f"{i}. {factor}\n"
+    
+    text += "\nRECOMMENDATIONS:\n"
+    recommendations = result.get('recommendations', [])
+    for i, rec in enumerate(recommendations, 1):
+        text += f"{i}. {rec}\n"
+    
+    # Add LLM analysis if available
+    llm_analysis = result.get('llm_analysis')
+    if llm_analysis and llm_analysis.get('analysis_available'):
+        text += "\nAI INSIGHTS:\n"
+        summary = llm_analysis.get('summary')
+        if summary:
+            text += f"Summary: {summary}\n"
+        
+        urgency = llm_analysis.get('urgency_level')
+        if urgency:
+            text += f"Urgency Level: {urgency}\n"
+    
+    text += f"\nGenerated by Personalized Healthcare AI System"
+    return text
+
 
 
 # display_connection_status function moved to avoid duplication - see line 584
@@ -459,7 +780,7 @@ def render_patient_management():
                 with col3:
                     st.metric("Last Visit", patient['last_visit'])
                 with col4:
-                    if st.button(f"View Details", key=f"view_{patient['id']}"):
+                    if st.button("View Details", key=f"view_{patient['id']}"):
                         st.info(f"Would open detailed view for {patient['name']}")
     
     with tab2:
@@ -707,11 +1028,11 @@ python -m uvicorn app:app --reload""")
     st.sidebar.title("Navigation")
     
     # Build navigation options based on user role
-    nav_options = ["🏠 Risk Assessment", "💊 Prescription Analysis", "📊 Health Log", "🤖 AI Assistant"]
+    nav_options = ["🏠 Risk Assessment", "💊 Prescription Analysis", "🏥 Medical Report Analysis", "📊 Health Log", "🤖 AI Assistant"]
     
     # Add role-specific navigation
     if is_doctor() or is_admin():
-        nav_options.extend(["📊 Dashboard", "👥 Patient Management"])
+        nav_options.extend(["👥 Patient Management"])
     
     # Admin-only navigation
     if is_admin():
@@ -751,123 +1072,91 @@ python -m uvicorn app:app --reload""")
     st.sidebar.markdown("---")
     st.sidebar.markdown("""
     <div style="text-align: center; color: #718096; font-size: 0.8rem; margin-top: 1rem;">
-        <p>© 2023 Personalized Healthcare System</p>
+        <p> 2023 Personalized Healthcare System</p>
         <p>v1.0.0</p>
     </div>
     """, unsafe_allow_html=True)
     
     if "🏠 Risk Assessment" in page:
-        st.header("👤 Patient Risk Assessment")
+        st.header("🔬 Advanced Health Risk Assessment")
+        st.markdown("""
+        **Comprehensive health risk assessment with laboratory data integration**
         
-        # Create two columns
-        col1, col2 = st.columns([1, 1.2], gap="large")
+        Enhanced lab-based analysis for accurate health predictions using comprehensive laboratory parameters.
+        """)
         
-        with col1:
-            with st.container():
-                st.markdown("### 📋 Patient Information")
-                st.markdown("<div class='card'>", unsafe_allow_html=True)
-                
-                # Patient input form
-                form = PatientInputForm()
-                patient_data = form.render()
-                
-                st.markdown("</div>", unsafe_allow_html=True)
-                
-                analyze_col1, analyze_col2 = st.columns([1, 2])
-                with analyze_col1:
-                    analyze_btn = st.button("🔍 Analyze Risk", 
-                                          type="primary", 
-                                          use_container_width=True,
-                                          help="Analyze patient data and generate risk assessment")
-                
-                if analyze_btn and patient_data:
-                    with st.spinner("Analyzing patient data and generating recommendations..."):
-                        prediction = api_client.make_prediction(patient_data)
-                        if prediction:
-                            # Store the full prediction response including LLM analysis
-                            st.session_state['prediction'] = prediction
-                            st.session_state['prediction_result'] = prediction  # For backward compatibility
-                            st.session_state['patient_data'] = patient_data
-                            st.session_state['last_analyzed'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            st.rerun()
+        # Create tabs for different analysis types
+        lab_tab, results_tab = st.tabs(["🔬 Lab Analysis", "📊 Results"])
         
-        with col2:
-            st.markdown("### 📊 Analysis Results")
+        with lab_tab:
+            st.markdown("### 🔬 Enhanced Lab-Based Analysis")
+            st.markdown("""
+            **Advanced health risk assessment using comprehensive laboratory data**
             
+            This enhanced analysis incorporates detailed hematology and blood chemistry values 
+            to provide more accurate and comprehensive health risk predictions.
+            """)
+            
+            # Initialize lab form
+            lab_form = LabPatientInputForm()
+            lab_patient_data = lab_form.render()
+            
+            # Analysis options
+            st.markdown("### Analysis Options")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                lab_force_llm = st.checkbox("Enable AI Analysis", 
+                                          value=True,
+                                          key="lab_force_llm",
+                                          help="Uses AI for comprehensive lab interpretation and clinical insights")
+            
+            with col2:
+                lab_analysis_type = st.selectbox("Analysis Type", 
+                                               ["🔬 Lab Analysis", "📊 Basic Assessment"],
+                                               key="lab_analysis_type",
+                                               help="Lab Analysis uses AI for complete medical interpretation")
+            
+            # Prediction button
+            if st.button("🔍 Analyze Health Risk", type="primary", key="lab_analyze_btn"):
+                if lab_patient_data:
+                    with st.spinner("Analyzing your health data..."):
+                        try:
+                            if lab_analysis_type == "🔬 Lab Analysis":
+                                result = api_client.make_lab_prediction(lab_patient_data, lab_force_llm)
+                            else:
+                                result = api_client.make_prediction(lab_patient_data, lab_force_llm)
+                            
+                            if result:
+                                st.session_state['prediction'] = result
+                                st.session_state['prediction_result'] = result
+                                st.session_state['patient_data'] = lab_patient_data
+                                st.session_state['last_analyzed'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                st.session_state['analysis_type'] = lab_analysis_type
+                                st.success("✅ Analysis completed! Check the 'Results' tab.")
+                            else:
+                                st.error("❌ Analysis failed. Please check your input data and try again.")
+                        except Exception as e:
+                            st.error(f"❌ Error during analysis: {str(e)}")
+                else:
+                    st.warning("⚠️ Please fill in the required basic information to proceed.")
+        
+        with results_tab:
             if 'prediction' in st.session_state and st.session_state['prediction']:
-                prediction = st.session_state['prediction']
-                
-                # Display last analyzed time
-                if 'last_analyzed' in st.session_state:
-                    st.caption(f"Last analyzed: {st.session_state['last_analyzed']}")
-                
-                # Create tabs for better organization
-                tab1, tab2, tab3, tab4 = st.tabs([
-                    "📈 Risk Assessment", 
-                    "💡 Recommendations", 
-                    "⚠️ Risk Factors",
-                    "🤖 AI Analysis"
-                ])
-                
-                with tab1:
-                    display_risk_assessment(prediction, st.session_state.get('patient_data', {}))
-                
-                with tab2:
-                    display_recommendations(prediction)
-                
-                with tab3:
-                    display_risk_factors(prediction)
-                    
-                with tab4:
-                    if prediction.get('llm_analysis'):
-                        display_llm_analysis(prediction['llm_analysis'])
-                    else:
-                        st.info("No AI analysis available. The LLM analysis feature might be disabled or encountered an error.")
-                        if st.button("🔄 Retry LLM Analysis", key="retry_llm_analysis"):
-                            # Trigger a new prediction with LLM analysis
-                            patient_data = st.session_state.get('patient_data', {})
-                            with st.spinner("Generating AI analysis..."):
-                                prediction = api_client.make_prediction(patient_data, force_llm=True)
-                                if prediction:
-                                    st.session_state['prediction'] = prediction
-                                    st.rerun()
-                
-                # Download results section
-                st.markdown("---")
-                st.markdown("### 📥 Export Results")
-                results_json = json.dumps({
-                    "patient_data": st.session_state.get('patient_data', {}),
-                    "prediction": prediction,
-                    "analysis_date": st.session_state.get('last_analyzed', datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-                }, indent=2)
-                
-                col1_dl, col2_dl = st.columns([1, 1])
-                with col1_dl:
-                    st.download_button(
-                        label="⬇️ Download JSON",
-                        data=results_json,
-                        file_name=f"health_risk_assessment_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
-                        mime="application/json",
-                        use_container_width=True
-                    )
-                
-                with col2_dl:
-                    if st.button("🤖 Ask AI about Results", use_container_width=True, help="Get AI explanation of your risk assessment"):
-                        # Store the prediction for the chatbot to access
-                        st.session_state['last_prediction'] = prediction
-                        st.rerun()
+                display_prediction_results(st.session_state['prediction'], 
+                                         st.session_state.get('analysis_type', 'Unknown'))
             else:
-                with st.container():
-                    st.markdown("<div class='card' style='text-align: center; padding: 2rem;'>"
-                               "<h3 style='color: #4a6fa5;'>No Analysis Results</h3>"
-                               "<p>Please fill in the patient information and click 'Analyze Risk' to see results.</p>"
-                               "<img src='https://img.icons8.com/color/200/000000/medical-doctor.png' width='150' style='opacity: 0.7; margin: 1rem 0;'/>"
-                               "</div>", 
-                               unsafe_allow_html=True)
+                st.info("🔍 No analysis results yet. Please run an analysis first.")
     
     elif "💊 Prescription Analysis" in page:
         st.header("💊 Prescription Analysis")
         render_prescription_chatbot()
+    
+    elif "🏥 Medical Report Analysis" in page:
+        from pages.medical_report_analysis import MedicalReportAnalyzer
+        analyzer = MedicalReportAnalyzer()
+        analyzer.run()
     
     elif "📊 Health Log" in page:
         st.header("📊 Health Log")
@@ -876,14 +1165,6 @@ python -m uvicorn app:app --reload""")
     elif "🤖 AI Assistant" in page:
         render_chatbot_interface()
     
-    elif "📊 Dashboard" in page:
-        if is_doctor():
-            st.header("📊 Healthcare Analytics Dashboard")
-            # Pass patient data to dashboard if available
-            patient_data = st.session_state.get('patient_data', None)
-            create_dashboard(patient_data)
-        else:
-            st.error("🙅‍♂️ Access denied. Doctor or Admin access required.")
     
     elif "👥 Patient Management" in page:
         if is_doctor():

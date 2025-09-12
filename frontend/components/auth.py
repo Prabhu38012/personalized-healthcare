@@ -25,7 +25,7 @@ class AuthManager:
             response = requests.post(
                 f"{self.auth_endpoint}/login",
                 json={"email": email, "password": password},
-                timeout=10
+                timeout=30
             )
             
             if response.status_code == 200:
@@ -123,7 +123,7 @@ class AuthManager:
                     "full_name": full_name, 
                     "role": role
                 },
-                timeout=10
+                timeout=30
             )
             
             if response.status_code == 200:
@@ -194,28 +194,10 @@ def logout_user():
 
 
 def show_development_credentials():
-    """Show test credentials for development purposes only"""
+    """Show database user info instead of test credentials"""
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🛠️ Development Mode")
-    
-    # Get default credentials
-    default_creds = st.session_state.auth_manager.get_default_credentials()
-    
-    if default_creds:
-        with st.sidebar.expander("🔑 Test Accounts", expanded=False):
-            st.markdown("**Admin:**")
-            st.code(f"{default_creds.get('admin', {}).get('email', 'N/A')}")
-            st.code(f"{default_creds.get('admin', {}).get('password', 'N/A')}")
-            
-            st.markdown("**Doctor:**")
-            st.code(f"{default_creds.get('doctor', {}).get('email', 'N/A')}")
-            st.code(f"{default_creds.get('doctor', {}).get('password', 'N/A')}")
-            
-            st.markdown("**Patient:**")
-            st.code(f"{default_creds.get('patient', {}).get('email', 'N/A')}")
-            st.code(f"{default_creds.get('patient', {}).get('password', 'N/A')}")
-            
-            st.caption("⚠️ For development use only")
+    st.sidebar.markdown("### 📋 Database Users")
+    st.sidebar.info("Please use your existing database credentials to sign in.")
 
 
 def render_login_page():

@@ -16,77 +16,98 @@ load_dotenv()
 
 # Import prediction routes
 try:
-    # Try absolute import first (more reliable)
-    from backend.routes.predict import router as predict_router
-    print("✓ Prediction routes imported successfully (absolute)")
+    # Try relative import first when running directly
+    from routes.predict import router as predict_router
+    print("✓ Prediction routes imported successfully (relative)")
 except ImportError:
     try:
-        # Fallback to relative import
-        from routes.predict import router as predict_router
-        print("✓ Prediction routes imported successfully (relative)")
+        # Fallback to absolute import for uvicorn
+        from backend.routes.predict import router as predict_router
+        print("✓ Prediction routes imported successfully (absolute)")
     except ImportError as e:
         print(f"✗ Failed to import prediction routes: {e}")
-        raise
+        predict_router = None
 
 # Import chatbot routes
 chatbot_router = None
 chatbot_available = False
 
 try:
-    from backend.routes.chatbot import router as chatbot_router
+    from routes.chatbot import router as chatbot_router
     chatbot_available = True
-    print("✓ Chatbot routes imported successfully (absolute)")
+    print("✓ Chatbot routes imported successfully (relative)")
 except ImportError:
     try:
-        from routes.chatbot import router as chatbot_router
+        from backend.routes.chatbot import router as chatbot_router
         chatbot_available = True
-        print("✓ Chatbot routes imported successfully (relative)")
+        print("✓ Chatbot routes imported successfully (absolute)")
     except ImportError as e:
         print(f"Failed to import chatbot routes: {e}")
         chatbot_router = None
         chatbot_available = False
-        print("⚠️  Chatbot module not available - running without AI chat")
+        print("⚠️  Running without AI chatbot functionality")
 
 # Import prescription routes
 prescription_router = None
 prescription_available = False
 
 try:
-    from backend.routes.prescription import router as prescription_router
+    from routes.prescription import router as prescription_router
     prescription_available = True
-    print("✓ Prescription routes imported successfully (absolute)")
+    print("✓ Prescription routes imported successfully (relative)")
 except ImportError:
     try:
-        from routes.prescription import router as prescription_router
+        from backend.routes.prescription import router as prescription_router
         prescription_available = True
-        print("✓ Prescription routes imported successfully (relative)")
+        print("✓ Prescription routes imported successfully (absolute)")
     except ImportError as e:
         print(f"Failed to import prescription routes: {e}")
         prescription_router = None
         prescription_available = False
         print("⚠️  Prescription analysis module not available")
 
+# Import medical report routes
+medical_report_router = None
+medical_report_available = False
+
+try:
+    from routes.medical_report import router as medical_report_router
+    medical_report_available = True
+    print("✓ Medical report routes imported successfully (relative)")
+except ImportError:
+    try:
+        from backend.routes.medical_report import router as medical_report_router
+        medical_report_available = True
+        print("✓ Medical report routes imported successfully (absolute)")
+    except ImportError as e:
+        print(f"Failed to import medical report routes: {e}")
+        medical_report_router = None
+        medical_report_available = False
+        print("⚠️  Medical report analysis module not available")
+
 # Import authentication routes with absolute imports first
 auth_router = None
 auth_available = False
 
 try:
-    # Try absolute import first (more reliable)
-    from backend.auth.routes import router as auth_router
+    # Try relative import first when running from backend directory
+    from auth.database_store import get_db
+    from auth.routes import router as auth_router
     auth_available = True
-    print("✓ Authentication routes imported successfully (absolute)")
-except ImportError as e:
-    print(f"Failed absolute auth import: {e}")
+    print("✓ Authentication routes imported successfully (relative)")
+except ImportError as e1:
     try:
-        # Fallback to relative import
-        from auth.routes import router as auth_router
+        # Fallback to absolute import
+        from backend.auth.database_store import get_db
+        from backend.auth.routes import router as auth_router
         auth_available = True
-        print("✓ Authentication routes imported successfully (relative)")
-    except ImportError as e:
-        print(f"Failed relative auth import: {e}")
+        print("✓ Authentication routes imported successfully (absolute)")
+    except ImportError as e2:
+        print(f"Failed to import auth routes (relative): {e1}")
+        print(f"Failed to import auth routes (absolute): {e2}")
         auth_router = None
         auth_available = False
-        print("⚠️  Authentication module not available - running without auth")
+        print("⚠️  Authentication module not available")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -109,8 +130,11 @@ app.add_middleware(
 )
 
 # Include routes
-app.include_router(predict_router, prefix="/api", tags=["predictions"])
-print("✓ Prediction routes registered at /api")
+if predict_router:
+    app.include_router(predict_router, prefix="/api", tags=["predictions"])
+    print("✓ Prediction routes registered at /api")
+else:
+    print("⚠️  Running without prediction functionality")
 
 if chatbot_available and chatbot_router:
     app.include_router(chatbot_router, prefix="/api", tags=["chatbot"])
@@ -131,6 +155,20 @@ if prescription_available and prescription_router:
     print("  - GET /api/prescription/health")
 else:
     print("⚠️  Running without prescription analysis functionality")
+
+if medical_report_available and medical_report_router:
+    app.include_router(medical_report_router, prefix="/api/medical-report", tags=["medical-report"])
+    print("✓ Medical report routes registered at /api/medical-report")
+    print("Available medical report endpoints:")
+    print("  - POST /api/medical-report/upload")
+    print("  - GET /api/medical-report/analysis/{analysis_id}")
+    print("  - GET /api/medical-report/download/{analysis_id}")
+    print("  - GET /api/medical-report/list")
+    print("  - DELETE /api/medical-report/analysis/{analysis_id}")
+    print("  - GET /api/medical-report/statistics")
+    print("  - GET /api/medical-report/health")
+else:
+    print("⚠️  Running without medical report analysis functionality")
 
 if auth_available and auth_router:
     app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])

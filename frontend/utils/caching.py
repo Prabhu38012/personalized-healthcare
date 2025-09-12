@@ -129,7 +129,7 @@ def cached_health_check(base_url: str) -> bool:
     """Cached health check function"""
     import requests
     try:
-        response = requests.get(f"{base_url}/health", timeout=5)
+        response = requests.get(f"{base_url}/health", timeout=30)
         return response.status_code == 200
     except:
         return False
@@ -140,9 +140,32 @@ def cached_model_info(base_url: str) -> Optional[dict]:
     """Cached model info function"""
     import requests
     try:
-        response = requests.get(f"{base_url}/model-info", timeout=5)
+        response = requests.get(f"{base_url}/model-info", timeout=30)
         if response.status_code == 200:
             return response.json()
     except:
         pass
     return None
+
+
+# Simple cache_data function for compatibility
+def cache_data(func=None, *, ttl=None, max_entries=None, show_spinner=True, persist=None, experimental_allow_widgets=False):
+    """
+    Simple cache_data wrapper for compatibility
+    Falls back to st.cache_data if available, otherwise uses session state caching
+    """
+    if func is None:
+        # Called as @cache_data(ttl=300)
+        def decorator(f):
+            return cache_data(f, ttl=ttl, max_entries=max_entries, show_spinner=show_spinner, 
+                            persist=persist, experimental_allow_widgets=experimental_allow_widgets)
+        return decorator
+    
+    # Called as @cache_data
+    try:
+        # Use Streamlit's built-in cache_data if available
+        return st.cache_data(func, ttl=ttl, max_entries=max_entries, show_spinner=show_spinner, 
+                           persist=persist, experimental_allow_widgets=experimental_allow_widgets)
+    except AttributeError:
+        # Fallback to session state caching
+        return cache_with_session_state(f"cache_{func.__name__}", ttl_seconds=ttl or 300)(func)

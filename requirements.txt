@@ -54,3 +54,24 @@ PyMuPDF>=1.23.0  # for PDF processing
 pdfplumber>=0.9.0  # excellent for PDF text extraction and analysis
 fuzzywuzzy>=0.18.0  # for fuzzy string matching
 python-Levenshtein>=0.21.0  # for faster fuzzy matching
+
+# Medical NLP and Report Analysis
+spacy>=3.6.1,<3.7.0
+scispacy>=0.5.3
+https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.3/en_core_sci_sm-0.5.3.tar.gz
+https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.5.3/en_core_sci_md-0.5.3.tar.gz
+medspacy>=1.0.0
+nltk>=3.8.1
+textstat>=0.7.3
+wordcloud>=1.9.2
+
+# Medical Knowledge Bases and APIs (simplified for faster installation)
+requests-cache>=1.1.0
+
+# Report Generation
+reportlab>=4.0.0
+jinja2>=3.1.0
+markdown>=3.5.0
+
+# Additional ML for Medical Analysis (simplified for compatibility)
+sentence-transformers>=2.2.0

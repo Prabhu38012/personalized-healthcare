@@ -92,6 +92,69 @@ async def reload_model(current_user = Depends(get_doctor_or_admin) if auth_avail
 class FHIRPatientData(BaseModel):
     fhir_bundle: Dict
 
+class LabPatientData(BaseModel):
+    """Lab-enhanced patient data model with comprehensive lab parameters"""
+    # LLM analysis control
+    force_llm: bool = Field(default=False, description="Force LLM analysis even if disabled by default")
+    
+    # Basic demographics and vitals
+    age: int = Field(..., ge=1, le=120, description="Patient age in years")
+    sex: str = Field(..., description="Patient sex (M/F)")
+    weight: float = Field(..., ge=30, le=300, description="Body weight in kg")
+    height: float = Field(..., ge=100, le=250, description="Body height in cm")
+    systolic_bp: Optional[int] = Field(None, ge=80, le=250, description="Systolic blood pressure in mmHg")
+    diastolic_bp: Optional[int] = Field(None, ge=40, le=150, description="Diastolic blood pressure in mmHg")
+    
+    # Basic chemistry
+    total_cholesterol: Optional[int] = Field(None, ge=100, le=600, description="Total cholesterol mg/dL")
+    ldl_cholesterol: Optional[int] = Field(None, ge=50, le=300, description="LDL cholesterol mg/dL")
+    hdl_cholesterol: Optional[int] = Field(None, ge=20, le=100, description="HDL cholesterol mg/dL")
+    triglycerides: Optional[int] = Field(None, ge=50, le=500, description="Triglycerides mg/dL")
+    hba1c: Optional[float] = Field(None, ge=4.0, le=15.0, description="HbA1c percentage")
+    
+    # Medical history
+    diabetes: Optional[int] = Field(0, ge=0, le=1, description="Diabetes status")
+    smoking: Optional[int] = Field(0, ge=0, le=1, description="Smoking status")
+    family_history: Optional[int] = Field(0, ge=0, le=1, description="Family history of heart disease")
+    fasting_blood_sugar: Optional[int] = Field(0, ge=0, le=1, description="Fasting blood sugar > 120 mg/dl")
+    
+    # Complete Blood Count (CBC)
+    hemoglobin: Optional[float] = Field(None, ge=5.0, le=20.0, description="Hemoglobin g/dL")
+    total_leukocyte_count: Optional[float] = Field(None, ge=1.0, le=50.0, description="Total WBC count 10³/μL")
+    red_blood_cell_count: Optional[float] = Field(None, ge=2.0, le=8.0, description="RBC count 10⁶/μL")
+    hematocrit: Optional[float] = Field(None, ge=20.0, le=60.0, description="Hematocrit %")
+    mean_corpuscular_volume: Optional[float] = Field(None, ge=60.0, le=120.0, description="MCV fL")
+    mean_corpuscular_hb: Optional[float] = Field(None, ge=20.0, le=40.0, description="MCH pg")
+    mean_corpuscular_hb_conc: Optional[float] = Field(None, ge=25.0, le=40.0, description="MCHC g/dL")
+    red_cell_distribution_width: Optional[float] = Field(None, ge=10.0, le=20.0, description="RDW %")
+    
+    # Differential Count
+    neutrophils_percent: Optional[float] = Field(None, ge=0.0, le=100.0, description="Neutrophils %")
+    lymphocytes_percent: Optional[float] = Field(None, ge=0.0, le=100.0, description="Lymphocytes %")
+    monocytes_percent: Optional[float] = Field(None, ge=0.0, le=100.0, description="Monocytes %")
+    eosinophils_percent: Optional[float] = Field(None, ge=0.0, le=100.0, description="Eosinophils %")
+    basophils_percent: Optional[float] = Field(None, ge=0.0, le=100.0, description="Basophils %")
+    absolute_neutrophil_count: Optional[float] = Field(None, ge=0.0, le=20.0, description="ANC 10³/μL")
+    absolute_lymphocyte_count: Optional[float] = Field(None, ge=0.0, le=10.0, description="ALC 10³/μL")
+    absolute_monocyte_count: Optional[float] = Field(None, ge=0.0, le=5.0, description="AMC 10³/μL")
+    absolute_eosinophil_count: Optional[float] = Field(None, ge=0.0, le=2.0, description="AEC 10³/μL")
+    absolute_basophil_count: Optional[float] = Field(None, ge=0.0, le=1.0, description="ABC 10³/μL")
+    
+    # Platelet Parameters
+    platelet_count: Optional[float] = Field(None, ge=50.0, le=1000.0, description="Platelet count 10³/μL")
+    mean_platelet_volume: Optional[float] = Field(None, ge=5.0, le=15.0, description="MPV fL")
+    platelet_distribution_width: Optional[float] = Field(None, ge=10.0, le=30.0, description="PDW %")
+    
+    # Additional Tests
+    erythrocyte_sedimentation_rate: Optional[float] = Field(None, ge=0.0, le=100.0, description="ESR mm/1st hour")
+    
+    @field_validator('sex')
+    @classmethod
+    def validate_sex(cls, v):
+        if v not in ['M', 'F']:
+            raise ValueError('Sex must be either M or F')
+        return v
+
 class SimplePatientData(BaseModel):
     """Patient data model optimized for EHR dataset features
     
@@ -186,6 +249,7 @@ class PredictionResponse(BaseModel):
     risk_factors: List[str]
     confidence: float
     llm_analysis: Optional[LLMAnalysis] = None
+    data: Optional[Dict[str, Any]] = None  # Include original patient data
 
 def load_model():
     """Load the trained model and preprocessor"""
@@ -265,21 +329,21 @@ def calculate_simple_risk_score(patient_data: dict) -> float:
         score += 0.1
     
     # Systolic blood pressure factor (0-0.25) - Second most important in EHR
-    systolic_bp = patient_data.get('systolic_bp', patient_data.get('resting_bp', 120))
-    if systolic_bp >= 160:
+    systolic_bp = patient_data.get('systolic_bp') or patient_data.get('resting_bp') or 120
+    if systolic_bp and systolic_bp >= 160:
         score += 0.25
-    elif systolic_bp >= 140:
+    elif systolic_bp and systolic_bp >= 140:
         score += 0.2
-    elif systolic_bp >= 130:
+    elif systolic_bp and systolic_bp >= 130:
         score += 0.1
     
     # Total cholesterol factor (0-0.2) - Important EHR feature
-    total_chol = patient_data.get('total_cholesterol', patient_data.get('cholesterol', 200))
-    if total_chol >= 280:
+    total_chol = patient_data.get('total_cholesterol') or patient_data.get('cholesterol') or 200
+    if total_chol and total_chol >= 280:
         score += 0.2
-    elif total_chol >= 240:
+    elif total_chol and total_chol >= 240:
         score += 0.15
-    elif total_chol >= 200:
+    elif total_chol and total_chol >= 200:
         score += 0.05
     
     # BMI factor (0-0.15) - Calculated from weight/height (important EHR features)
@@ -288,13 +352,13 @@ def calculate_simple_risk_score(patient_data: dict) -> float:
     else:
         weight = patient_data.get('weight', 70)
         height_m = patient_data.get('height', 170) / 100
-        bmi = weight / (height_m ** 2)
+        bmi = weight / (height_m ** 2) if weight and height_m else None
     
-    if bmi >= 35:
+    if bmi and bmi >= 35:
         score += 0.15
-    elif bmi >= 30:
+    elif bmi and bmi >= 30:
         score += 0.1
-    elif bmi >= 25:
+    elif bmi and bmi >= 25:
         score += 0.05
     
     # Smoking factor (0-0.1)
@@ -315,11 +379,11 @@ def calculate_simple_risk_score(patient_data: dict) -> float:
     diastolic_bp = patient_data.get('diastolic_bp')
     if not diastolic_bp:
         # Calculate from systolic if not provided
-        diastolic_bp = max(60, systolic_bp - 40)
+        diastolic_bp = max(60, systolic_bp - 40) if systolic_bp else 80
     
-    if diastolic_bp >= 100:
+    if diastolic_bp and diastolic_bp >= 100:
         score += 0.08
-    elif diastolic_bp >= 90:
+    elif diastolic_bp and diastolic_bp >= 90:
         score += 0.05
     
     # Legacy clinical assessment fields (lower weight for EHR model)
@@ -336,8 +400,6 @@ def calculate_simple_risk_score(patient_data: dict) -> float:
     # Ensure score is between 0 and 1
     return min(max(score, 0.05), 0.95)  # Keep between 5% and 95%
 
-
-
 def generate_recommendations(patient_data: dict, risk_prob: float) -> List[str]:
     """Generate personalized health recommendations based on patient data"""
     recommendations = []
@@ -350,17 +412,17 @@ def generate_recommendations(patient_data: dict, risk_prob: float) -> List[str]:
         recommendations.append("Regular health screenings recommended based on age")
 
     # Blood pressure management (using new field names)
-    systolic_bp = patient_data.get('systolic_bp', patient_data.get('resting_bp', 0))
-    if systolic_bp >= 140:
+    systolic_bp = patient_data.get('systolic_bp') or patient_data.get('resting_bp') or 0
+    if systolic_bp and systolic_bp >= 140:
         recommendations.append("Monitor blood pressure regularly and consult with your healthcare provider")
-    elif systolic_bp >= 130:
+    elif systolic_bp and systolic_bp >= 130:
         recommendations.append("Lifestyle modifications recommended for blood pressure management")
     
     # Cholesterol management (using new field names)
-    total_cholesterol = patient_data.get('total_cholesterol', patient_data.get('cholesterol', 0))
-    if total_cholesterol >= 240:
+    total_cholesterol = patient_data.get('total_cholesterol') or patient_data.get('cholesterol') or 0
+    if total_cholesterol and total_cholesterol >= 240:
         recommendations.append("Discuss cholesterol management strategies with your doctor")
-    elif total_cholesterol >= 200:
+    elif total_cholesterol and total_cholesterol >= 200:
         recommendations.append("Consider cholesterol screening and dietary modifications")
     
     # BMI recommendations (calculate if needed)
@@ -369,11 +431,11 @@ def generate_recommendations(patient_data: dict, risk_prob: float) -> List[str]:
     else:
         weight = patient_data.get('weight', 70)
         height_m = patient_data.get('height', 170) / 100
-        bmi = weight / (height_m ** 2)
+        bmi = weight / (height_m ** 2) if weight and height_m else None
     
-    if bmi >= 30:
+    if bmi and bmi >= 30:
         recommendations.append("Weight management program recommended for obesity")
-    elif bmi >= 25:
+    elif bmi and bmi >= 25:
         recommendations.append("Healthy weight maintenance recommended")
     
     # Risk-based recommendations
@@ -613,144 +675,88 @@ async def _generate_llm_analysis(patient_data: dict, risk_score: float, risk_fac
 
 @router.post("/predict/simple", response_model=PredictionResponse)
 async def predict_health_risk_simple(patient: SimplePatientData):
-    """Predict health risk for a patient using simple data format"""
+    """Predict health risk for a patient using AI directly"""
     try:
-        logger.info("=== STARTING PREDICTION ===")
-        # Load model
-        model_data = load_model()
-        model = model_data['model']
+        logger.info("=== STARTING AI PREDICTION ===")
         
-        # Log which model is being used for debugging
-        model_type = model_data.get('model_type', type(model).__name__)
-        logger.info(f"Using model type: {model_type}")
-        logger.info(f"Model data keys: {list(model_data.keys())}")
-        
-        # Convert simple data to model format
+        # Convert simple data to dictionary format
         patient_dict = patient.dict()
         logger.info(f"Input patient data: {patient_dict}")
         
-        # Extract force_llm flag and remove it from patient data to avoid model errors
+        # Extract force_llm flag and remove it from patient data
         force_llm = patient_dict.pop('force_llm', False)
         logger.info(f"LLM analysis forced: {force_llm}")
         
-        # Check if we have a fallback model or EHR model
-        model_type = model_data.get('model_type', 'unknown')
-        logger.info(f"Model type detected: {model_type}")
+        # Use AI for direct prediction
+        logger.info("Using AI for health risk prediction")
+        ai_prediction = llm_analyzer.predict_health_risk(patient_dict)
         
-        if model_type in ['RandomForestClassifier', 'FallbackRandomForest', 'EmergencyFallback']:
-            # Use fallback model feature mapping
-            feature_data = map_simple_to_fallback_features(patient_dict)
-            logger.info(f"Mapped fallback data: {feature_data}")
+        if ai_prediction.get("success"):
+            # Extract prediction results from AI
+            risk_probability = ai_prediction["risk_probability"]
+            risk_level = ai_prediction["risk_level"]
+            confidence = ai_prediction["confidence"]
+            recommendations = ai_prediction["recommendations"]
+            risk_factors = ai_prediction["risk_factors"]
+            llm_analysis_data = ai_prediction["llm_analysis"]
             
-            # Convert to DataFrame
-            df = pd.DataFrame([feature_data])
+            logger.info(f"AI prediction - Risk Level: {risk_level}, Probability: {risk_probability:.3f}")
             
-            # Use scaler if available
-            if 'scaler' in model_data and model_data['scaler'] is not None:
-                df_scaled = model_data['scaler'].transform(df)
-                df = pd.DataFrame(df_scaled, columns=df.columns)
+            # Create LLM analysis object
+            llm_analysis_obj = LLMAnalysis(**llm_analysis_data)
             
-            # Make prediction
-            if hasattr(model, 'predict_proba'):
-                risk_probability = float(model.predict_proba(df)[0][1])
-                logger.info(f"Fallback model prediction probability: {risk_probability:.3f}")
-            else:
-                risk_probability = float(model.predict(df)[0])
         else:
-            # Use EHR format for other models
-            ehr_data = map_simple_to_ehr_features(patient_dict)
-            logger.info(f"Mapped EHR data: {ehr_data}")
+            # Fallback to traditional model if AI fails
+            logger.warning(f"AI prediction failed: {ai_prediction.get('reason', 'Unknown error')}")
+            logger.info("Falling back to traditional model prediction")
             
-            # Convert to DataFrame
-            df = pd.DataFrame([ehr_data])
+            # Load traditional model as fallback
+            model_data = load_model()
+            model = model_data['model']
             
-            # Handle different model types
-            if hasattr(model, 'feature_names_in_'):
-                # Model has feature names (sklearn-style)
-                expected_features = model.feature_names_in_
-                
-                # Ensure we have all required features
-                missing_features = [f for f in expected_features if f not in df.columns]
-                
-                if missing_features:
-                    logger.warning(f"Missing features in input data: {missing_features}")
-                    # Fill missing features with defaults
-                    for f in missing_features:
-                        df[f] = 0
-                
-                # Reorder columns to match training
-                df = df[expected_features]
-                
-                # Make prediction
-                if hasattr(model, 'predict_proba'):
-                    risk_probability = float(model.predict_proba(df)[0][1])
-                    logger.info(f"Model prediction probability: {risk_probability:.3f}")
-                else:
-                    risk_probability = float(model.predict(df)[0])
-                    
-            elif 'feature_columns' in model_data:
-                # Handle models with explicit feature columns
-                expected_features = model_data['feature_columns']
-                
-                # Ensure all features are present
-                for col in expected_features:
-                    if col not in df.columns:
-                        df[col] = 0
-                
-                # Reorder columns to match training
-                df = df[expected_features]
-                
-                # Make prediction
-                if hasattr(model, 'predict_proba'):
-                    risk_probability = float(model.predict_proba(df)[0][1])
-                else:
-                    risk_probability = float(model.predict(df)[0])
+            # Use simple risk calculation as fallback
+            risk_probability = calculate_simple_risk_score(patient_dict)
+            confidence = abs(risk_probability - 0.5) * 2
+            
+            # Determine risk level
+            if risk_probability > 0.7:
+                risk_level = "High"
+            elif risk_probability > 0.4:
+                risk_level = "Medium"
             else:
-                # Fallback to simple risk calculation
-                risk_probability = calculate_simple_risk_score(patient_dict)
-                logger.info(f"Using simple risk calculation fallback: {risk_probability:.3f}")
+                risk_level = "Low"
+            
+            # Generate recommendations and identify risk factors using traditional methods
+            recommendations = generate_recommendations(patient_dict, risk_probability)
+            risk_factors = identify_simple_risk_factors(patient_dict)
+            
+            # Try to generate LLM analysis as additional insight
+            llm_analysis_obj = None
+            try:
+                llm_analysis_result = await _generate_llm_analysis(patient_dict, risk_probability, risk_factors, force_llm)
+                if llm_analysis_result and isinstance(llm_analysis_result, dict):
+                    llm_analysis_obj = LLMAnalysis(**llm_analysis_result)
+            except Exception as e:
+                logger.error(f"Error generating fallback LLM analysis: {str(e)}", exc_info=True)
+                # Create a fallback LLM analysis object
+                llm_analysis_obj = LLMAnalysis(
+                    analysis_available=False,
+                    reason=f"Both Gemini prediction and LLM analysis failed: {str(e)}"
+                )
         
-        # Calculate confidence
-        confidence = abs(risk_probability - 0.5) * 2
-        
-        # Determine risk level
-        if risk_probability > 0.7:
-            risk_level = "High"
-        elif risk_probability > 0.4:
-            risk_level = "Medium"
-        else:
-            risk_level = "Low"
-        
-        # Generate recommendations and identify risk factors
-        recommendations = generate_recommendations(patient_dict, risk_probability)
-        risk_factors = identify_simple_risk_factors(patient_dict)
-        
-        # Generate LLM analysis in the background
-        llm_analysis_obj = None
-        try:
-            llm_analysis_result = await _generate_llm_analysis(patient_dict, risk_probability, risk_factors, force_llm)
-            if llm_analysis_result and isinstance(llm_analysis_result, dict):
-                llm_analysis_obj = LLMAnalysis(**llm_analysis_result)
-        except Exception as e:
-            logger.error(f"Error generating LLM analysis: {str(e)}", exc_info=True)
-            # Create a fallback LLM analysis object
-            llm_analysis_obj = LLMAnalysis(
-                analysis_available=False,
-                reason=f"LLM analysis failed: {str(e)}"
-            )
-        
-        # Create response with LLM analysis
+        # Create response
         response = PredictionResponse(
             risk_probability=float(risk_probability),
             risk_level=risk_level,
             recommendations=recommendations,
             risk_factors=risk_factors,
             confidence=float(confidence),
-            llm_analysis=llm_analysis_obj
+            llm_analysis=llm_analysis_obj,
+            data=patient_dict  # Include original patient data
         )
         
         logger.info(f"=== PREDICTION COMPLETED ===")
-        logger.info(f"Risk Level: {risk_level}, Probability: {risk_probability:.3f}")
+        logger.info(f"Final Risk Level: {risk_level}, Probability: {risk_probability:.3f}")
         return response
         
     except Exception as e:
@@ -769,7 +775,8 @@ async def predict_health_risk_simple(patient: SimplePatientData):
             llm_analysis=LLMAnalysis(
                 analysis_available=False,
                 reason="Prediction error occurred"
-            )
+            ),
+            data=patient.dict() if patient else {}  # Include patient data even in error case
         )
 def identify_simple_risk_factors(patient_data: dict) -> List[str]:
     """Identify current risk factors based on simple patient data"""
@@ -864,6 +871,225 @@ def identify_simple_risk_factors(patient_data: dict) -> List[str]:
     
     return risk_factors
 
+def calculate_lab_enhanced_risk_score(patient_data: dict) -> float:
+    """Calculate lab-enhanced risk score incorporating lab parameters"""
+    # Start with basic risk calculation
+    score = calculate_simple_risk_score(patient_data)
+    
+    # Lab-based risk adjustments
+    hemoglobin = patient_data.get('hemoglobin')
+    if hemoglobin is not None and isinstance(hemoglobin, (int, float)):
+        sex = patient_data.get('sex', 'M')
+        if sex == 'M' and hemoglobin < 13.0:
+            score += 0.1  # Anemia in males
+        elif sex == 'F' and hemoglobin < 12.0:
+            score += 0.1  # Anemia in females
+        elif hemoglobin > 18.0:
+            score += 0.05  # Polycythemia
+    
+    # White blood cell count
+    wbc = patient_data.get('total_leukocyte_count')
+    if wbc is not None and isinstance(wbc, (int, float)):
+        if wbc > 11.0:
+            score += 0.08  # Leukocytosis (infection/inflammation)
+        elif wbc < 4.0:
+            score += 0.05  # Leukopenia
+    
+    # Platelet count
+    platelets = patient_data.get('platelet_count')
+    if platelets is not None and isinstance(platelets, (int, float)):
+        if platelets < 150:
+            score += 0.06  # Thrombocytopenia
+        elif platelets > 450:
+            score += 0.04  # Thrombocytosis
+    
+    # ESR (inflammation marker)
+    esr = patient_data.get('erythrocyte_sedimentation_rate')
+    if esr is not None and isinstance(esr, (int, float)) and esr > 20:
+        score += 0.05  # Elevated inflammation
+    
+    # Neutrophil percentage (infection indicator)
+    neutrophils = patient_data.get('neutrophils_percent')
+    if neutrophils is not None and isinstance(neutrophils, (int, float)):
+        if neutrophils > 80:
+            score += 0.04  # Neutrophilia
+        elif neutrophils < 40:
+            score += 0.03  # Neutropenia
+    
+    # Lymphocyte percentage (immune function)
+    lymphocytes = patient_data.get('lymphocytes_percent')
+    if lymphocytes is not None and isinstance(lymphocytes, (int, float)) and lymphocytes < 20:
+        score += 0.03  # Lymphopenia
+    
+    return min(max(score, 0.05), 0.95)
+
+def identify_lab_risk_factors(patient_data: dict) -> List[str]:
+    """Identify lab-specific risk factors"""
+    risk_factors = identify_simple_risk_factors(patient_data)
+    
+    # Hematology risk factors
+    hemoglobin = patient_data.get('hemoglobin')
+    if hemoglobin is not None and isinstance(hemoglobin, (int, float)):
+        sex = patient_data.get('sex', 'M')
+        if sex == 'M' and hemoglobin < 13.0:
+            risk_factors.append(f"Anemia (Hemoglobin: {hemoglobin} g/dL)")
+        elif sex == 'F' and hemoglobin < 12.0:
+            risk_factors.append(f"Anemia (Hemoglobin: {hemoglobin} g/dL)")
+        elif hemoglobin > 18.0:
+            risk_factors.append(f"Polycythemia (Hemoglobin: {hemoglobin} g/dL)")
+    
+    # White blood cell abnormalities
+    wbc = patient_data.get('total_leukocyte_count')
+    if wbc is not None and isinstance(wbc, (int, float)):
+        if wbc > 11.0:
+            risk_factors.append(f"Leukocytosis (WBC: {wbc} × 10³/μL)")
+        elif wbc < 4.0:
+            risk_factors.append(f"Leukopenia (WBC: {wbc} × 10³/μL)")
+    
+    # Platelet abnormalities
+    platelets = patient_data.get('platelet_count')
+    if platelets is not None and isinstance(platelets, (int, float)):
+        if platelets < 150:
+            risk_factors.append(f"Thrombocytopenia (Platelets: {platelets} × 10³/μL)")
+        elif platelets > 450:
+            risk_factors.append(f"Thrombocytosis (Platelets: {platelets} × 10³/μL)")
+    
+    # Inflammation markers
+    esr = patient_data.get('erythrocyte_sedimentation_rate')
+    if esr is not None and isinstance(esr, (int, float)) and esr > 20:
+        risk_factors.append(f"Elevated inflammation (ESR: {esr} mm/hr)")
+    
+    # Differential count abnormalities
+    neutrophils = patient_data.get('neutrophils_percent')
+    if neutrophils is not None and isinstance(neutrophils, (int, float)):
+        if neutrophils > 80:
+            risk_factors.append(f"Neutrophilia ({neutrophils}%)")
+        elif neutrophils < 40:
+            risk_factors.append(f"Neutropenia ({neutrophils}%)")
+    
+    lymphocytes = patient_data.get('lymphocytes_percent')
+    if lymphocytes is not None and isinstance(lymphocytes, (int, float)) and lymphocytes < 20:
+        risk_factors.append(f"Lymphopenia ({lymphocytes}%)")
+    
+    return risk_factors
+
+@router.post("/predict/lab", response_model=PredictionResponse)
+async def predict_health_risk_lab(patient: LabPatientData):
+    """Predict health risk using lab-enhanced data with AI analysis"""
+    try:
+        logger.info("=== STARTING LAB-ENHANCED AI PREDICTION ===")
+        
+        # Convert to dict for processing
+        patient_dict = patient.dict()
+        logger.info(f"Patient data keys: {list(patient_dict.keys())}")
+        
+        # Calculate BMI if not provided
+        if not patient_dict.get('bmi') and patient_dict.get('weight') and patient_dict.get('height'):
+            height_m = patient_dict['height'] / 100
+            patient_dict['bmi'] = patient_dict['weight'] / (height_m ** 2)
+            logger.info(f"Calculated BMI: {patient_dict['bmi']:.2f}")
+        
+        # Try AI-powered analysis first
+        try:
+            logger.info("Attempting AI-powered lab analysis...")
+            llm_analysis = await _generate_llm_analysis(patient_dict, 0.5, [], force_llm=True)
+            
+            if llm_analysis.get('analysis_available', False):
+                logger.info("✅ AI analysis successful - using AI results")
+                return PredictionResponse(
+                    risk_probability=llm_analysis.get('risk_score', 0.5),
+                    risk_level=_get_risk_level(llm_analysis.get('risk_score', 0.5)),
+                    recommendations=llm_analysis.get('recommendations', []),
+                    risk_factors=llm_analysis.get('risk_factors', []),
+                    confidence=llm_analysis.get('confidence', 0.8),
+                    llm_analysis=LLMAnalysis(**llm_analysis),
+                    data=patient.dict()  # Include original patient data
+                )
+            else:
+                logger.warning("❌ AI analysis failed - falling back to traditional lab calculation")
+                
+        except Exception as ai_error:
+            logger.error(f"AI analysis error: {str(ai_error)}")
+            logger.warning("Falling back to traditional lab risk calculation")
+        
+        # Fallback to traditional lab-enhanced calculation
+        logger.info("Using traditional lab-enhanced risk calculation...")
+        
+        # Calculate lab-enhanced risk score with detailed logging
+        try:
+            logger.info("Calling calculate_lab_enhanced_risk_score...")
+            risk_score = calculate_lab_enhanced_risk_score(patient_dict)
+            logger.info(f"Lab-enhanced risk score: {risk_score}")
+        except Exception as calc_error:
+            logger.error(f"Error in calculate_lab_enhanced_risk_score: {str(calc_error)}")
+            raise calc_error
+        
+        # Generate recommendations and risk factors with detailed logging
+        try:
+            logger.info("Generating recommendations...")
+            recommendations = generate_recommendations(patient_dict, risk_score)
+            logger.info(f"Generated {len(recommendations)} recommendations")
+        except Exception as rec_error:
+            logger.error(f"Error in generate_recommendations: {str(rec_error)}")
+            raise rec_error
+            
+        try:
+            logger.info("Identifying lab risk factors...")
+            risk_factors = identify_lab_risk_factors(patient_dict)
+            logger.info(f"Identified {len(risk_factors)} risk factors")
+        except Exception as rf_error:
+            logger.error(f"Error in identify_lab_risk_factors: {str(rf_error)}")
+            raise rf_error
+        
+        # Determine risk level
+        risk_level = _get_risk_level(risk_score)
+        
+        # Calculate confidence based on available lab data
+        lab_fields = ['hemoglobin', 'total_leukocyte_count', 'platelet_count', 'neutrophils_percent', 'lymphocytes_percent']
+        available_labs = sum(1 for field in lab_fields if patient_dict.get(field) is not None)
+        confidence = 0.6 + (available_labs / len(lab_fields)) * 0.3  # 0.6-0.9 range
+        
+        logger.info("✅ Lab prediction completed successfully")
+        
+        return PredictionResponse(
+            risk_probability=risk_score,
+            risk_level=risk_level,
+            recommendations=recommendations,
+            risk_factors=risk_factors,
+            confidence=confidence,
+            llm_analysis=llm_analysis_obj,
+            data=patient.dict()  # Include original patient data
+        )
+        
+    except Exception as e:
+        logger.error(f"Lab prediction error: {str(e)}")
+        logger.error(f"Error type: {type(e).__name__}")
+        import traceback
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        # Return fallback response
+        return PredictionResponse(
+            risk_probability=0.3,
+            risk_level="Low",
+            recommendations=[
+                "Unable to process lab prediction at this time",
+                "Please consult with your healthcare provider",
+                "Regular health check-ups and lab monitoring recommended"
+            ],
+            risk_factors=["Lab assessment temporarily unavailable"],
+            confidence=0.5,
+            llm_analysis=LLMAnalysis(
+                analysis_available=False,
+                summary="Temporary service issue",
+                key_risk_factors=[],
+                health_implications="Temporary service issue",
+                recommendations=["Please try again later or contact support"],
+                urgency_level="low",
+                reason=f"Lab prediction error: {str(e)}"
+            ),
+            data=patient.dict() if patient else {}  # Include patient data even in error case
+        )
+
 @router.post("/predict", response_model=PredictionResponse)
 async def predict_health_risk(patient: FHIRPatientData, current_user = Depends(get_current_user) if auth_available else None):
     """Predict health risk for a patient using EHR data (requires authentication if enabled)"""
@@ -920,7 +1146,8 @@ async def predict_health_risk(patient: FHIRPatientData, current_user = Depends(g
             risk_level=risk_level,
             recommendations=recommendations,
             risk_factors=risk_factors,
-            confidence=float(confidence)
+            confidence=float(confidence),
+            data=patient_dict  # Include original patient data
         )
         
     except Exception as e:
@@ -1031,3 +1258,19 @@ async def batch_predict_health_risk(patients: List[FHIRPatientData], current_use
     except Exception as e:
         logger.error(f"Batch prediction error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Batch prediction failed: {str(e)}")
+
+def _get_risk_level(risk_score: float) -> str:
+    """Convert a risk score (0-1) to a risk level string
+    
+    Args:
+        risk_score: Risk probability between 0 and 1
+        
+    Returns:
+        Risk level as string: "Low", "Medium", or "High"
+    """
+    if risk_score > 0.7:
+        return "High"
+    elif risk_score > 0.4:
+        return "Medium"
+    else:
+        return "Low"

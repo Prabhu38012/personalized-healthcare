@@ -10,12 +10,12 @@ from sqlalchemy.exc import IntegrityError
 
 try:
     from backend.db import SessionLocal, engine
-    from backend.auth.db_models import User
+    from backend.auth.db_models import User, MedicalReportAnalysis
     from backend.auth.models import UserCreate, UserUpdate, UserInDB, UserRole
 except ImportError:
     # Fallback for when running from backend directory
     from db import SessionLocal, engine
-    from auth.db_models import User
+    from auth.db_models import User, MedicalReportAnalysis
     from auth.models import UserCreate, UserUpdate, UserInDB, UserRole
 
 
@@ -25,11 +25,17 @@ class DatabaseUserStore:
     def __init__(self):
         # Create tables if they don't exist
         try:
-            from backend.auth.db_models import User as UserModel
+            from backend.auth.db_models import User as UserModel, MedicalReportAnalysis as ReportModel
         except ImportError:
-            from auth.db_models import User as UserModel
-        UserModel.metadata.create_all(bind=engine)
-        self._ensure_default_users()
+            from auth.db_models import User as UserModel, MedicalReportAnalysis as ReportModel
+        
+        try:
+            UserModel.metadata.create_all(bind=engine)
+            ReportModel.metadata.create_all(bind=engine)
+            self._ensure_default_users()
+        except Exception as e:
+            print(f"Warning: Database initialization failed: {e}")
+            print("Authentication service will continue with limited functionality")
     
     def _get_db(self) -> Session:
         """Get database session"""
@@ -60,8 +66,9 @@ class DatabaseUserStore:
     
     def _ensure_default_users(self):
         """Create default users if they don't exist"""
-        db = self._get_db()
+        db = None
         try:
+            db = self._get_db()
             # Check if any users exist
             existing_users = db.query(User).count()
             if existing_users > 0:
@@ -106,10 +113,12 @@ class DatabaseUserStore:
             print(f"✓ Created {len(default_users)} default users in database")
             
         except Exception as e:
-            db.rollback()
+            if db:
+                db.rollback()
             print(f"Error creating default users: {e}")
         finally:
-            db.close()
+            if db:
+                db.close()
     
     def get_user_by_email(self, email: str) -> Optional[UserInDB]:
         """Get user by email"""
@@ -334,3 +343,11 @@ def get_current_user(token: str):
         return None
     
     return database_user_store.get_user_by_email(email)
+
+def get_db() -> Session:
+    """Dependency to get database session for FastAPI routes"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
