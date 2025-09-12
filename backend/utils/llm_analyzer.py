@@ -18,7 +18,7 @@ class LLMRiskAnalyzer:
     def __init__(self):
         # Get API key from environment variable
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model_name = "gemini-1.5-pro"
+        self.model_name = "gemini-2.0-flash-exp"
         self.temperature = 0.3
         
         # Configure the Gemini client if API key is available

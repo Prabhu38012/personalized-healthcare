@@ -25,7 +25,7 @@ class GeminiLabAnalyzer:
                 return
             
             genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-1.5-pro')
+            self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
             self.is_configured = True
             logger.info("Gemini Lab Analyzer initialized successfully")
             
