@@ -43,3 +43,14 @@ psutil>=5.9.0  # for memory monitoring during training
 
 # Utilities
 typing-extensions>=4.7.0
+
+# OCR and Image Processing for Prescription Analysis
+easyocr>=1.7.0
+opencv-python>=4.8.0
+Pillow>=10.0.0
+pytesseract>=0.3.10
+pdf2image>=1.16.0
+PyMuPDF>=1.23.0  # for PDF processing
+pdfplumber>=0.9.0  # excellent for PDF text extraction and analysis
+fuzzywuzzy>=0.18.0  # for fuzzy string matching
+python-Levenshtein>=0.21.0  # for faster fuzzy matching

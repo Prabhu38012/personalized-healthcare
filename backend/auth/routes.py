@@ -2,21 +2,34 @@
 Authentication routes for the healthcare API
 """
 from datetime import datetime, timedelta
+try:
+    from .models import (
+        LoginRequest, LoginResponse, UserCreate, UserResponse, 
+        Token, PasswordChange, PasswordReset, UserUpdate,
+        UserRole, SessionData
+    )
+    from .database_store import database_user_store
+    from .security import (
+        create_access_token, verify_token,
+        log_security_event, generate_session_id, SecurityConfig
+    )
+except ImportError:
+    # Fallback for when running from backend directory
+    from auth.models import (
+        LoginRequest, LoginResponse, UserCreate, UserResponse, 
+        Token, PasswordChange, PasswordReset, UserUpdate,
+        UserRole, SessionData
+    )
+    from auth.database_store import database_user_store
+    from auth.security import (
+        create_access_token, verify_token,
+        log_security_event, generate_session_id, SecurityConfig
+    )
+
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, status, Request, Response
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import secrets
-
-from .models import (
-    LoginRequest, LoginResponse, UserCreate, UserResponse, 
-    Token, PasswordChange, PasswordReset, UserUpdate,
-    UserRole, SessionData
-)
-from .database_store import database_user_store
-from .security import (
-    create_access_token, verify_token,
-    log_security_event, generate_session_id, SecurityConfig
-)
 
 router = APIRouter()
 security = HTTPBearer()
@@ -264,7 +277,7 @@ async def signup_user(user_data: UserCreate):
         # Create new user
         new_user = database_user_store.create_user(user_data)
         
-        log_security_event("USER_SIGNUP", user_data.email, "Public signup")
+        log_security_event("USER_SIGNUP", user_data.email, f"Self-registered as: {user_data.role}")
         
         return UserResponse(
             id=new_user.id,
@@ -285,7 +298,7 @@ async def signup_user(user_data: UserCreate):
         log_security_event("USER_SIGNUP_ERROR", user_data.email, f"Error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Signup failed"
+            detail="Signup failed due to system error"
         )
 
 

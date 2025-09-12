@@ -8,9 +8,15 @@ import hashlib
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from backend.db import SessionLocal, engine
-from backend.auth.db_models import User
-from backend.auth.models import UserCreate, UserUpdate, UserInDB, UserRole
+try:
+    from backend.db import SessionLocal, engine
+    from backend.auth.db_models import User
+    from backend.auth.models import UserCreate, UserUpdate, UserInDB, UserRole
+except ImportError:
+    # Fallback for when running from backend directory
+    from db import SessionLocal, engine
+    from auth.db_models import User
+    from auth.models import UserCreate, UserUpdate, UserInDB, UserRole
 
 
 class DatabaseUserStore:
@@ -18,8 +24,11 @@ class DatabaseUserStore:
     
     def __init__(self):
         # Create tables if they don't exist
-        from backend.auth.db_models import User
-        User.metadata.create_all(bind=engine)
+        try:
+            from backend.auth.db_models import User as UserModel
+        except ImportError:
+            from auth.db_models import User as UserModel
+        UserModel.metadata.create_all(bind=engine)
         self._ensure_default_users()
     
     def _get_db(self) -> Session:
@@ -308,3 +317,20 @@ class DatabaseUserStore:
 
 # Global database user store instance
 database_user_store = DatabaseUserStore()
+
+def get_current_user(token: str):
+    """Get current user from token - for prescription routes compatibility"""
+    try:
+        from backend.auth.security import verify_token
+    except ImportError:
+        from auth.security import verify_token
+    
+    payload = verify_token(token)
+    if not payload:
+        return None
+    
+    email = payload.get("sub")
+    if not email:
+        return None
+    
+    return database_user_store.get_user_by_email(email)

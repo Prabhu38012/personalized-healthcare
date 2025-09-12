@@ -10,7 +10,9 @@ from components.auth import (
     show_development_credentials
 )
 from components.chatbot import render_chatbot_interface, render_chatbot_sidebar
+from components.prescription_chatbot import render_prescription_chatbot
 from pages.dashboard import create_dashboard, calculate_risk_score
+from pages.health_log import create_health_log_page
 from utils.api_client import HealthcareAPI
 from utils.caching import cleanup_expired_cache, get_cache_stats
 import json
@@ -705,7 +707,7 @@ python -m uvicorn app:app --reload""")
     st.sidebar.title("Navigation")
     
     # Build navigation options based on user role
-    nav_options = ["🏠 Risk Assessment", "🤖 AI Assistant"]
+    nav_options = ["🏠 Risk Assessment", "💊 Prescription Analysis", "📊 Health Log", "🤖 AI Assistant"]
     
     # Add role-specific navigation
     if is_doctor() or is_admin():
@@ -862,6 +864,14 @@ python -m uvicorn app:app --reload""")
                                "<img src='https://img.icons8.com/color/200/000000/medical-doctor.png' width='150' style='opacity: 0.7; margin: 1rem 0;'/>"
                                "</div>", 
                                unsafe_allow_html=True)
+    
+    elif "💊 Prescription Analysis" in page:
+        st.header("💊 Prescription Analysis")
+        render_prescription_chatbot()
+    
+    elif "📊 Health Log" in page:
+        st.header("📊 Health Log")
+        create_health_log_page()
     
     elif "🤖 AI Assistant" in page:
         render_chatbot_interface()

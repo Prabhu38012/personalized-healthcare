@@ -47,6 +47,25 @@ except ImportError:
         chatbot_available = False
         print("⚠️  Chatbot module not available - running without AI chat")
 
+# Import prescription routes
+prescription_router = None
+prescription_available = False
+
+try:
+    from backend.routes.prescription import router as prescription_router
+    prescription_available = True
+    print("✓ Prescription routes imported successfully (absolute)")
+except ImportError:
+    try:
+        from routes.prescription import router as prescription_router
+        prescription_available = True
+        print("✓ Prescription routes imported successfully (relative)")
+    except ImportError as e:
+        print(f"Failed to import prescription routes: {e}")
+        prescription_router = None
+        prescription_available = False
+        print("⚠️  Prescription analysis module not available")
+
 # Import authentication routes with absolute imports first
 auth_router = None
 auth_available = False
@@ -103,6 +122,16 @@ if chatbot_available and chatbot_router:
 else:
     print("⚠️  Running without AI chatbot functionality")
 
+if prescription_available and prescription_router:
+    app.include_router(prescription_router, prefix="/api/prescription", tags=["prescription"])
+    print("✓ Prescription routes registered at /api/prescription")
+    print("Available prescription endpoints:")
+    print("  - POST /api/prescription/upload")
+    print("  - POST /api/prescription/medicine-info")
+    print("  - GET /api/prescription/health")
+else:
+    print("⚠️  Running without prescription analysis functionality")
+
 if auth_available and auth_router:
     app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])
     print("✓ Authentication routes registered at /api/auth")
@@ -151,4 +180,4 @@ async def test_endpoint():
     return {"message": "This is a test endpoint"}
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)

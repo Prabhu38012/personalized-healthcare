@@ -11,6 +11,7 @@ maxUploadSize = 50
 maxMessageSize = 50
 enableWebsocketCompression = true
 baseUrlPath = ""
+headless = false
 
 [browser]
 gatherUsageStats = false

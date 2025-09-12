@@ -72,15 +72,27 @@ def main():
         print("\n✅ Services started successfully!")
         print("Press Ctrl+C to stop all services")
         
-        # Wait for processes
+        # Wait for processes and keep them running
         try:
-            for name, process in processes:
-                process.wait()
+            while True:
+                # Check if any process has died unexpectedly
+                for name, process in processes:
+                    if process.poll() is not None:
+                        print(f"⚠️ {name} process stopped unexpectedly (exit code: {process.returncode})")
+                        return
+                
+                time.sleep(1)  # Check every second
+                
         except KeyboardInterrupt:
             print("\n🛑 Stopping services...")
             for name, process in processes:
-                process.terminate()
-                print(f"✅ {name} stopped")
+                try:
+                    process.terminate()
+                    process.wait(timeout=5)
+                    print(f"✅ {name} stopped")
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    print(f"🔥 {name} force stopped")
             
     except Exception as e:
         print(f"❌ Error: {e}")

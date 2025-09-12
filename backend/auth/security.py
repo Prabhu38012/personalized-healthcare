@@ -5,8 +5,6 @@ import os
 import jwt
 from datetime import datetime, timedelta
 from typing import Optional, Union
-from passlib.context import CryptContext
-from passlib.hash import bcrypt
 import secrets
 import warnings
 
@@ -14,6 +12,12 @@ import warnings
 warnings.filterwarnings("ignore", message=".*bcrypt.*", category=UserWarning)
 warnings.filterwarnings("ignore", message=".*__about__.*")
 
+try:
+    from passlib.context import CryptContext
+    from passlib.hash import bcrypt
+    PASSLIB_AVAILABLE = True
+except ImportError:
+    PASSLIB_AVAILABLE = False
 
 # Password hashing context with enhanced bcrypt compatibility fix
 try:

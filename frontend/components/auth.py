@@ -277,11 +277,25 @@ def render_login_page():
             with st.form("login_form", clear_on_submit=False):
                 st.markdown('<div class="form-container">', unsafe_allow_html=True)
                 
+                # Create HTML form with proper autocomplete attributes
+                st.markdown("""
+                <style>
+                .stTextInput > div > div > input[type="email"] {
+                    autocomplete: email;
+                }
+                .stTextInput > div > div > input[type="password"] {
+                    autocomplete: current-password;
+                }
+                </style>
+                """, unsafe_allow_html=True)
+                
                 email = st.text_input(
                     "Email Address",
                     placeholder="Enter your email address",
                     help="Use your registered healthcare system email",
-                    label_visibility="visible"
+                    label_visibility="visible",
+                    key="login_email",
+                    autocomplete="email"
                 )
                 
                 password = st.text_input(
@@ -289,7 +303,9 @@ def render_login_page():
                     type="password",
                     placeholder="Enter your password",
                     help="Your secure password",
-                    label_visibility="visible"
+                    label_visibility="visible",
+                    key="login_password",
+                    autocomplete="current-password"
                 )
                 
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -344,7 +360,9 @@ def render_login_page():
                     "Email Address",
                     placeholder="Enter your email address",
                     help="This will be your login email",
-                    label_visibility="visible"
+                    label_visibility="visible",
+                    key="signup_email",
+                    autocomplete="email"
                 )
                 
                 signup_password = st.text_input(
@@ -352,7 +370,9 @@ def render_login_page():
                     type="password",
                     placeholder="Create a secure password",
                     help="Must be at least 8 characters with uppercase, lowercase, and numbers",
-                    label_visibility="visible"
+                    label_visibility="visible",
+                    key="signup_password",
+                    autocomplete="new-password"
                 )
                 
                 confirm_password = st.text_input(
@@ -360,7 +380,9 @@ def render_login_page():
                     type="password",
                     placeholder="Confirm your password",
                     help="Re-enter your password to confirm",
-                    label_visibility="visible"
+                    label_visibility="visible",
+                    key="confirm_password",
+                    autocomplete="new-password"
                 )
                 
                 role = st.selectbox(
