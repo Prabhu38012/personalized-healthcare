@@ -18,8 +18,16 @@ class HealthcareAPI:
         """Set authentication headers"""
         self.auth_headers = headers or {}
     
-    def make_prediction(self, patient_data):
-        """Make API call to get prediction with only expected features"""
+    def make_prediction(self, patient_data, force_llm=False):
+        """Make API call to get prediction with only expected features
+        
+        Args:
+            patient_data (dict): Dictionary containing patient data
+            force_llm (bool): Whether to force LLM analysis even if it's disabled by default
+            
+        Returns:
+            dict: Prediction results including risk assessment and recommendations
+        """
         # Define the expected features based on the backend's PatientData model
         expected_features = [
             # Basic Information
@@ -34,6 +42,9 @@ class HealthcareAPI:
         
         # Filter the patient data to only include expected features
         filtered_data = {k: v for k, v in patient_data.items() if k in expected_features}
+        
+        # Add force_llm flag to the request data
+        filtered_data['force_llm'] = force_llm
         
         # Convert numeric fields to appropriate types
         numeric_fields = ['age', 'resting_bp', 'cholesterol', 'hdl_cholesterol', 'ldl_cholesterol',
@@ -56,12 +67,18 @@ class HealthcareAPI:
                     pass
         
         try:
-            headers = {**self.auth_headers}
-            response = requests.post(f"{self.base_url}/predict-simple", json=filtered_data, headers=headers, timeout=30)
-            if response.status_code == 200:
+            headers = {**self.auth_headers, "Content-Type": "application/json"}
+            try:
+                response = requests.post(
+                    f"{self.base_url}/predict/simple",
+                    json=filtered_data,
+                    headers=headers,
+                    timeout=30
+                )
+                response.raise_for_status()  # Raise an exception for 4XX/5XX responses
                 return response.json()
-            else:
-                st.error(f"Error from API: {response.status_code} - {response.text}")
+            except requests.exceptions.HTTPError as http_err:
+                st.error(f"HTTP error occurred: {http_err} - {response.text if 'response' in locals() else 'No response'}")
                 return None
         except requests.exceptions.RequestException as e:
             st.error(f"Failed to connect to the prediction service. Please ensure the backend server is running.\nError: {str(e)}")

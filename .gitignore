@@ -23,7 +23,6 @@ MANIFEST
 
 # Virtual Environment
 venv/
-{{ ... }}
 env/
 ENV/
 .venv/
@@ -93,6 +92,12 @@ check_*.py
 diagnose_*.py
 debug_*.py
 *_debug.py
+simple_auth_test.py
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
 
 # Development containers
 .devcontainer/

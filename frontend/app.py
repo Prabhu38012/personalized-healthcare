@@ -75,10 +75,47 @@ if hasattr(api_client, 'set_auth_headers'):
 
 
 
+def display_llm_analysis(llm_analysis):
+    """Display LLM analysis in an expandable section"""
+    if not llm_analysis or not llm_analysis.get('analysis_available'):
+        return
+        
+    with st.expander("🤖 AI-Powered Health Insights", expanded=True):
+        st.markdown("### 🧠 AI Analysis Summary")
+        st.markdown(f"{llm_analysis.get('summary', 'No analysis available')}")
+        
+        # Key risk factors
+        if llm_analysis.get('key_risk_factors'):
+            st.markdown("\n### 🔍 Key Risk Factors")
+            for factor in llm_analysis['key_risk_factors']:
+                st.markdown(f"- {factor}")
+        
+        # Health implications
+        if llm_analysis.get('health_implications'):
+            st.markdown("\n### ⚠️ Health Implications")
+            st.markdown(llm_analysis['health_implications'])
+        
+        # Recommendations
+        if llm_analysis.get('recommendations'):
+            st.markdown("\n### 💡 Recommendations")
+            for rec in llm_analysis['recommendations']:
+                st.markdown(f"- {rec}")
+        
+        # Urgency level
+        if llm_analysis.get('urgency_level'):
+            urgency = llm_analysis['urgency_level'].lower()
+            if urgency == 'high':
+                st.error("🔴 **Urgency: High** - Immediate attention recommended")
+            elif urgency == 'medium':
+                st.warning("🟠 **Urgency: Medium** - Schedule follow-up soon")
+            else:
+                st.success("🟢 **Urgency: Low** - Routine monitoring recommended")
+
 def display_risk_assessment(prediction, patient_data=None):
     """Display risk assessment results with enhanced visualization"""
     risk_level = prediction.get('risk_level', 'Low')
     risk_prob = prediction.get('risk_probability', 0)
+    llm_analysis = prediction.get('llm_analysis')
     
     # Use patient_data from session state if available
     if patient_data is None:
@@ -373,7 +410,10 @@ def display_risk_factors(prediction):
             """, unsafe_allow_html=True)
         
         st.markdown("</div>", unsafe_allow_html=True)  # Close card container
-
+        
+        # Display LLM analysis if available
+        if 'llm_analysis' in st.session_state.get('prediction_result', {}):
+            display_llm_analysis(st.session_state.prediction_result['llm_analysis'])
 
 
 
@@ -622,6 +662,16 @@ def display_connection_status():
 
 def main():
     """Main application"""
+    # Initialize page state if not exists
+    if 'page' not in st.session_state:
+        st.session_state.page = "🏠 Risk Assessment"
+    
+    # Handle page redirects from auth
+    if hasattr(st.session_state, 'redirect_to'):
+        st.session_state.page = st.session_state.redirect_to
+        del st.session_state.redirect_to
+        st.rerun()
+    
     # Main header with logo and title
     col1, col2 = st.columns([1, 4])
     with col1:
@@ -657,19 +707,30 @@ python -m uvicorn app:app --reload""")
     # Build navigation options based on user role
     nav_options = ["🏠 Risk Assessment", "🤖 AI Assistant"]
     
-    if is_doctor():
+    # Add role-specific navigation
+    if is_doctor() or is_admin():
         nav_options.extend(["📊 Dashboard", "👥 Patient Management"])
     
+    # Admin-only navigation
     if is_admin():
         nav_options.extend(["🔧 Admin Panel", "👤 User Management"])
     
+    # Add About page
     nav_options.append("ℹ️ About")
     
+    # Get the current page from session state or default to first option
+    default_index = nav_options.index(st.session_state.page) if st.session_state.page in nav_options else 0
+    
+    # Update page based on sidebar selection
     page = st.sidebar.radio(
         "Go to",
         nav_options,
-        index=0
+        index=default_index,
+        key="page_selector"
     )
+    
+    # Update session state page
+    st.session_state.page = page
     
     # Display connection status in sidebar
     display_connection_status()
@@ -678,10 +739,16 @@ python -m uvicorn app:app --reload""")
     if "🤖 AI Assistant" not in page:
         render_chatbot_sidebar()
     
+    # Add logout button in footer
+    if st.session_state.authenticated:
+        if st.sidebar.button("🚪 Logout", use_container_width=True, type="primary", key="main_logout_btn"):
+            from components.auth import logout_user
+            logout_user()
+    
     # Add footer
     st.sidebar.markdown("---")
     st.sidebar.markdown("""
-    <div style="text-align: center; color: #718096; font-size: 0.8rem; margin-top: 2rem;">
+    <div style="text-align: center; color: #718096; font-size: 0.8rem; margin-top: 1rem;">
         <p>© 2023 Personalized Healthcare System</p>
         <p>v1.0.0</p>
     </div>
@@ -715,7 +782,9 @@ python -m uvicorn app:app --reload""")
                     with st.spinner("Analyzing patient data and generating recommendations..."):
                         prediction = api_client.make_prediction(patient_data)
                         if prediction:
+                            # Store the full prediction response including LLM analysis
                             st.session_state['prediction'] = prediction
+                            st.session_state['prediction_result'] = prediction  # For backward compatibility
                             st.session_state['patient_data'] = patient_data
                             st.session_state['last_analyzed'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             st.rerun()
@@ -731,7 +800,12 @@ python -m uvicorn app:app --reload""")
                     st.caption(f"Last analyzed: {st.session_state['last_analyzed']}")
                 
                 # Create tabs for better organization
-                tab1, tab2, tab3 = st.tabs(["📈 Risk Assessment", "💡 Recommendations", "⚠️ Risk Factors"])
+                tab1, tab2, tab3, tab4 = st.tabs([
+                    "📈 Risk Assessment", 
+                    "💡 Recommendations", 
+                    "⚠️ Risk Factors",
+                    "🤖 AI Analysis"
+                ])
                 
                 with tab1:
                     display_risk_assessment(prediction, st.session_state.get('patient_data', {}))
@@ -741,6 +815,20 @@ python -m uvicorn app:app --reload""")
                 
                 with tab3:
                     display_risk_factors(prediction)
+                    
+                with tab4:
+                    if prediction.get('llm_analysis'):
+                        display_llm_analysis(prediction['llm_analysis'])
+                    else:
+                        st.info("No AI analysis available. The LLM analysis feature might be disabled or encountered an error.")
+                        if st.button("🔄 Retry LLM Analysis", key="retry_llm_analysis"):
+                            # Trigger a new prediction with LLM analysis
+                            patient_data = st.session_state.get('patient_data', {})
+                            with st.spinner("Generating AI analysis..."):
+                                prediction = api_client.make_prediction(patient_data, force_llm=True)
+                                if prediction:
+                                    st.session_state['prediction'] = prediction
+                                    st.rerun()
                 
                 # Download results section
                 st.markdown("---")

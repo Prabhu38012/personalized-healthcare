@@ -257,9 +257,9 @@ async def register_user(user_data: UserCreate, admin_user = Depends(get_admin_us
 async def signup_user(user_data: UserCreate):
     """Public signup endpoint for new users"""
     try:
-        # Only allow patient role for public signup
-        if user_data.role != UserRole.PATIENT:
-            user_data.role = UserRole.PATIENT
+        # Only allow patient or doctor role for public signup
+        if user_data.role not in [UserRole.PATIENT, UserRole.DOCTOR]:
+            user_data.role = UserRole.PATIENT  # Default to patient if invalid role
         
         # Create new user
         new_user = database_user_store.create_user(user_data)

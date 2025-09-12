@@ -1,5 +1,6 @@
 import os
 import logging
+import asyncio
 from typing import Dict, List, Optional, Any, Union
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -7,6 +8,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 import joblib
 import pandas as pd
 import numpy as np
+
+# Import LLM analyzer
+from ..utils.llm_analyzer import llm_analyzer
 
 # Import authentication dependencies with absolute imports first
 try:
@@ -93,11 +97,17 @@ class SimplePatientData(BaseModel):
     
     Based on your EHR dataset's top predictive features:
     - birth_date (22.3%) - Most important feature
-    - SystolicBloodPressure (16.9%) - Second most important  
+    - SystolicBloodPressure (16.9%) - Second most important
     - DiastolicBloodPressure (8.5%) - Fourth most important
     - BodyWeight (7.0%) - Fifth most important
     - BodyHeight (5.7%) - Sixth most important
+    
+    Additional parameters:
+    - force_llm: If True, forces LLM analysis even if it's disabled by default
     """
+    # LLM analysis control
+    force_llm: bool = Field(default=False, description="Force LLM analysis even if disabled by default")
+    
     # TOP PRIORITY - Most predictive EHR features (with backward compatibility)
     age: int = Field(..., ge=1, le=120, description="Patient age in years (used to calculate birth_date - 22.3% importance)")
     systolic_bp: Optional[int] = Field(None, ge=80, le=250, description="Systolic blood pressure in mmHg (16.9% importance)")
@@ -152,13 +162,22 @@ class SimplePatientData(BaseModel):
         if self.total_cholesterol is None and self.cholesterol is not None:
             self.total_cholesterol = self.cholesterol
             
-        # Ensure we have minimum required values
+        # Set default values if not provided
         if self.systolic_bp is None:
-            raise ValueError("Either systolic_bp or resting_bp must be provided")
+            self.systolic_bp = 120  # Default normal systolic BP
         if self.total_cholesterol is None:
-            raise ValueError("Either total_cholesterol or cholesterol must be provided")
+            self.total_cholesterol = 200  # Default normal cholesterol
             
         return self
+
+class LLMAnalysis(BaseModel):
+    analysis_available: bool
+    summary: Optional[str] = None
+    key_risk_factors: Optional[List[str]] = None
+    health_implications: Optional[str] = None
+    recommendations: Optional[List[str]] = None
+    urgency_level: Optional[str] = None
+    reason: Optional[str] = None
 
 class PredictionResponse(BaseModel):
     risk_probability: float
@@ -166,6 +185,7 @@ class PredictionResponse(BaseModel):
     recommendations: List[str]
     risk_factors: List[str]
     confidence: float
+    llm_analysis: Optional[LLMAnalysis] = None
 
 def load_model():
     """Load the trained model and preprocessor"""
@@ -422,158 +442,178 @@ def identify_ehr_risk_factors(patient_data: dict) -> List[str]:
     
     return risk_factors
 
+def map_simple_to_fallback_features(patient_dict: dict) -> dict:
+    """Map simple patient data to fallback model feature format
+    
+    Args:
+        patient_dict: Dictionary containing simple patient data
+        
+    Returns:
+        Dictionary with features expected by the fallback model
+    """
+    # Map legacy fields to new fields
+    systolic_bp = patient_dict.get('systolic_bp') or patient_dict.get('resting_bp', 120)
+    total_cholesterol = patient_dict.get('total_cholesterol') or patient_dict.get('cholesterol', 200)
+    
+    # Calculate diastolic BP if not provided (typically 60-80% of systolic)
+    diastolic_bp = patient_dict.get('diastolic_bp')
+    if diastolic_bp is None:
+        diastolic_bp = int(systolic_bp * 0.67)  # Rough estimate
+    
+    # Calculate BMI if not provided
+    bmi = patient_dict.get('bmi')
+    if bmi is None and patient_dict.get('weight') and patient_dict.get('height'):
+        weight_kg = float(patient_dict['weight'])
+        height_m = float(patient_dict['height']) / 100  # Convert cm to m
+        bmi = weight_kg / (height_m ** 2)
+    
+    # Create feature mapping for fallback model
+    fallback_features = {
+        'age': patient_dict.get('age', 50),
+        'sex': 1 if patient_dict.get('sex', 'M').upper() == 'M' else 0,
+        'systolic_bp': systolic_bp,
+        'diastolic_bp': diastolic_bp,
+        'cholesterol': total_cholesterol,
+        'bmi': bmi or 25.0,
+        'smoking': patient_dict.get('smoking', 0),
+        'diabetes': patient_dict.get('diabetes', 0),
+        'family_history': patient_dict.get('family_history', 0),
+        'exercise_hours': patient_dict.get('exercise_hours', 2.0),  # Default moderate exercise
+        'stress_level': patient_dict.get('stress_level', 5),  # Default moderate stress
+    }
+    
+    return fallback_features
+
 def map_simple_to_ehr_features(patient_dict: dict) -> dict:
     """Map simple patient data to EHR feature format based on your actual dataset
     
     Uses the top predictive features from your EHR dataset:
     - birth_date (22.3%), SystolicBloodPressure (16.9%), patient_id (12.7%),
     - DiastolicBloodPressure (8.5%), BodyWeight (7.0%)
+    
+    Args:
+        patient_dict: Dictionary containing simple patient data
+        
+    Returns:
+        Dictionary with EHR-formatted features
     """
-    from datetime import datetime
-    import numpy as np
+    # Calculate birth date from age
+    from datetime import datetime, timedelta
+    current_year = datetime.now().year
+    birth_year = current_year - patient_dict.get('age', 50)
+    birth_date = f"{birth_year}-01-01"
     
-    age = patient_dict.get('age', 30)
+    # Map legacy fields to new fields
+    systolic_bp = patient_dict.get('systolic_bp') or patient_dict.get('resting_bp', 120)
+    total_cholesterol = patient_dict.get('total_cholesterol') or patient_dict.get('cholesterol', 200)
     
-    # Create deterministic seed for consistent synthetic data
-    patient_str = f"{age}_{patient_dict.get('sex', 'M')}_{patient_dict.get('systolic_bp', patient_dict.get('resting_bp', 120))}_{patient_dict.get('total_cholesterol', patient_dict.get('cholesterol', 200))}"
-    np.random.seed(abs(hash(patient_str)) % 1000)
-    
-    ehr_data = {}
-    
-    # TOP PREDICTIVE FEATURES from your EHR dataset
-    # 1. birth_date (22.3% importance) - Most important feature!
-    birth_year = datetime.now().year - age
-    ehr_data['birth_date'] = f"{birth_year}-01-01"
-    
-    # 2. SystolicBloodPressure (16.9% importance) - Second most important!
-    ehr_data['SystolicBloodPressure'] = patient_dict.get('systolic_bp', patient_dict.get('resting_bp', 120))
-    
-    # 3. patient_id (12.7% importance) - Third most important!
-    ehr_data['patient_id'] = str(abs(hash(patient_str)) % 100000)
-    
-    # 4. DiastolicBloodPressure (8.5% importance)
-    if 'diastolic_bp' in patient_dict and patient_dict['diastolic_bp']:
-        ehr_data['DiastolicBloodPressure'] = patient_dict['diastolic_bp']
-    else:
-        systolic = patient_dict.get('systolic_bp', patient_dict.get('resting_bp', 120))
-        # Realistic diastolic calculation with variation based on risk
-        base_diastolic = systolic - 40
-        if patient_dict.get('diabetes', 0) or patient_dict.get('smoking', 0):
-            base_diastolic += 5  # Higher diastolic for risk factors
-        ehr_data['DiastolicBloodPressure'] = max(60, base_diastolic)
-    
-    # 5. BodyWeight (7.0% importance)
-    ehr_data['BodyWeight'] = patient_dict.get('weight', 70)
-    
-    # Other important physical measurements
-    ehr_data['BodyHeight'] = patient_dict.get('height', 170)
+    # Calculate diastolic BP if not provided (typically 60-80% of systolic)
+    diastolic_bp = patient_dict.get('diastolic_bp')
+    if diastolic_bp is None:
+        diastolic_bp = int(systolic_bp * 0.67)  # Rough estimate
     
     # Calculate BMI if not provided
-    if 'bmi' in patient_dict and patient_dict['bmi']:
-        ehr_data['BodyMassIndex'] = patient_dict['bmi']
-    else:
-        weight = patient_dict.get('weight', 70)
-        height_m = patient_dict.get('height', 170) / 100
-        ehr_data['BodyMassIndex'] = weight / (height_m ** 2)
+    bmi = patient_dict.get('bmi')
+    if bmi is None and patient_dict.get('weight') and patient_dict.get('height'):
+        weight_kg = float(patient_dict['weight'])
+        height_m = float(patient_dict['height']) / 100  # Convert cm to m
+        bmi = weight_kg / (height_m ** 2)
     
-    # Cholesterol profile - important for cardiac risk
-    ehr_data['TotalCholesterol'] = patient_dict.get('total_cholesterol', patient_dict.get('cholesterol', 200))
-    ehr_data['LowDensityLipoproteinCholesterol'] = patient_dict.get('ldl_cholesterol', 100)
-    ehr_data['HighDensityLipoproteinCholesterol'] = patient_dict.get('hdl_cholesterol', 50)
-    ehr_data['Triglycerides'] = patient_dict.get('triglycerides', 150)
+    # Create EHR feature mapping
+    ehr_features = {
+        # Top predictive features from your EHR dataset
+        'birth_date': birth_date,  # 22.3% importance
+        'SystolicBloodPressure': systolic_bp,  # 16.9% importance
+        'patient_id': hash(str(patient_dict)) % 10000,  # 12.7% importance - synthetic ID
+        'DiastolicBloodPressure': diastolic_bp,  # 8.5% importance
+        'BodyWeight': patient_dict.get('weight', 70.0),  # 7.0% importance
+        'BodyHeight': patient_dict.get('height', 170.0),  # 5.7% importance
+        'BMI': bmi or 25.0,  # 5.0% importance
+        
+        # Additional important features
+        'TotalCholesterol': total_cholesterol,  # 2.8% importance
+        'LDLCholesterol': patient_dict.get('ldl_cholesterol', total_cholesterol * 0.6),  # 2.9%
+        'Triglycerides': patient_dict.get('triglycerides', 150),  # 3.1% importance
+        'HDLCholesterol': patient_dict.get('hdl_cholesterol', 50),
+        'HbA1c': patient_dict.get('hba1c', 5.5),
+        
+        # Categorical features
+        'Sex': 1 if patient_dict.get('sex', 'M').upper() == 'M' else 0,
+        'Diabetes': patient_dict.get('diabetes', 0),
+        'Smoking': patient_dict.get('smoking', 0),
+        'FamilyHistory': patient_dict.get('family_history', 0),
+        'FastingBloodSugar': patient_dict.get('fasting_blood_sugar', 0),
+        
+        # Additional features for compatibility
+        'MaxHeartRate': patient_dict.get('max_heart_rate', 150),
+        'ChestPainType': patient_dict.get('chest_pain_type', 'typical'),
+        'RestingECG': patient_dict.get('resting_ecg', 'normal'),
+        'ExerciseAngina': patient_dict.get('exercise_angina', 0),
+        'Oldpeak': patient_dict.get('oldpeak', 0.0),
+        'Slope': patient_dict.get('slope', 'up'),
+        'CA': patient_dict.get('ca', 0),
+        'Thal': patient_dict.get('thal', 'normal'),
+        
+        # Age as numeric feature
+        'Age': patient_dict.get('age', 50),
+    }
     
-    # Diabetes marker
-    hba1c_base = 5.5
-    if patient_dict.get('hba1c'):
-        hba1c_base = patient_dict['hba1c']
-    elif patient_dict.get('diabetes', 0) == 1:
-        hba1c_base = 7.0 + np.random.uniform(0, 1.5)  # Diabetic range
-    ehr_data['HemoglobinA1cHemoglobintotalinBlood'] = hba1c_base
+    return ehr_features
     
-    # Gender mapping
-    ehr_data['gender'] = patient_dict.get('sex', 'M')
+async def _generate_llm_analysis(patient_data: dict, risk_score: float, risk_factors: list[str], force_llm: bool = False) -> Dict[str, Any]:
+    """Generate LLM analysis for the prediction
     
-    # Conditions - very important for risk assessment
-    conditions = []
-    if patient_dict.get('diabetes', 0) == 1:
-        conditions.append('diabetes')
-    if patient_dict.get('smoking', 0) == 1:
-        conditions.append('smoking')
-    systolic = patient_dict.get('systolic_bp', patient_dict.get('resting_bp', 120))
-    if systolic >= 140:
-        conditions.append('hypertension')
-    total_chol = patient_dict.get('total_cholesterol', patient_dict.get('cholesterol', 200))
-    if total_chol >= 240:
-        conditions.append('dyslipidemia')
-    bmi = ehr_data['BodyMassIndex']
-    if bmi >= 30:
-        conditions.append('obesity')
-    
-    ehr_data['conditions'] = ' '.join(conditions) if conditions else 'none'
-    
-    # Lab values with risk-adjusted ranges
-    diabetes_multiplier = 1.3 if patient_dict.get('diabetes', 0) else 1.0
-    
-    # Core lab values
-    ehr_data['Glucose'] = (85 * diabetes_multiplier) + np.random.uniform(-15, 25)
-    ehr_data['Creatinine'] = 0.9 + (0.2 if age > 65 else 0) + np.random.uniform(-0.1, 0.2)
-    ehr_data['Calcium'] = 9.5 + np.random.uniform(-0.3, 0.3)
-    ehr_data['Sodium'] = 140 + np.random.uniform(-3, 3)
-    ehr_data['Potassium'] = 4.0 + np.random.uniform(-0.3, 0.3)
-    ehr_data['Chloride'] = 100 + np.random.uniform(-3, 3)
-    ehr_data['CarbonDioxide'] = 24 + np.random.uniform(-2, 2)
-    
-    # Kidney function
-    age_factor = max(0.7, 1.2 - (age / 100))  # Decline with age
-    ehr_data['EstimatedGlomerularFiltrationRate'] = 90 * age_factor + np.random.uniform(-10, 10)
-    
-    # Lung function
-    smoking_penalty = 0.1 if patient_dict.get('smoking', 0) else 0
-    ehr_data['FEV1FVC'] = (0.8 - smoking_penalty) + np.random.uniform(-0.05, 0.05)
-    
-    # Allergy markers (typically low unless allergic)
-    allergy_features = [
-        'AmericanhousedustmiteIgEAbinSerum', 'CatdanderIgEAbinSerum',
-        'CladosporiumherbarumIgEAbinSerum', 'CodfishIgEAbinSerum',
-        'CommonRagweedIgEAbinSerum', 'CowmilkIgEAbinSerum', 'EggwhiteIgEAbinSerum'
-    ]
-    
-    for feature in allergy_features:
-        ehr_data[feature] = np.random.exponential(2)  # Exponential distribution for allergy markers
-    
-    # Social/demographic factors
-    ehr_data['AbuseStatusOMAHA'] = np.random.uniform(0, 10)
-    ehr_data['AreyoucoveredbyhealthinsuranceorsomeotherkindofhealthcareplanPhenX'] = np.random.uniform(80, 100)
-    
-    # Add the exact missing features that the model was trained on
-    missing_trained_features = [
-        'MicroalbuminCreatineRatio', 'Oraltemperature', 'PeanutIgEAbinSerum',
-        'PolypsizegreatestdimensionbyCAPcancerprotocols', 'Sexualorientation',
-        'ShrimpIgEAbinSerum', 'SoybeanIgEAbinSerum', 'TotalscoreMMSE',
-        'WalnutIgEAbinSerum', 'WheatIgEAbinSerum', 'WhiteoakIgEAbinSerum'
-    ]
-    
-    for feature in missing_trained_features:
-        if 'IgE' in feature:
-            ehr_data[feature] = np.random.exponential(2)  # Allergy markers
-        elif feature == 'MicroalbuminCreatineRatio':
-            ehr_data[feature] = np.random.uniform(0, 30)  # Normal kidney function
-        elif feature == 'Oraltemperature':
-            ehr_data[feature] = np.random.uniform(97, 99)  # Normal temperature
-        elif feature == 'PolypsizegreatestdimensionbyCAPcancerprotocols':
-            ehr_data[feature] = 0  # No polyps for most people
-        elif feature == 'Sexualorientation':
-            ehr_data[feature] = np.random.choice([0, 1, 2])  # Various orientations
-        elif feature == 'TotalscoreMMSE':
-            ehr_data[feature] = np.random.uniform(24, 30)  # Normal cognitive function
-        else:
-            ehr_data[feature] = np.random.uniform(0, 5)  # Generic default
-    
-    return ehr_data
-    
-@router.post("/predict-simple", response_model=PredictionResponse)
-async def predict_health_risk_simple(patient: SimplePatientData, current_user = Depends(get_current_user) if auth_available else None):
-    """Predict health risk for a patient using simple data format (requires authentication if enabled)"""
+    Args:
+        patient_data: Dictionary containing patient data
+        risk_score: Calculated risk score (0-1)
+        risk_factors: List of identified risk factors
+        force_llm: If True, forces LLM analysis even if it's disabled by default
+        
+    Returns:
+        Dictionary with the analysis results or error information
+    """
+    try:
+        # Check if LLM analysis is enabled or forced
+        if not llm_analyzer.is_enabled() and not force_llm:
+            return {
+                "analysis_available": False,
+                "reason": "LLM analysis is disabled"
+            }
+        
+        # If LLM is disabled but force_llm is True, log a warning
+        if not llm_analyzer.is_enabled() and force_llm:
+            logger.warning("LLM analysis is disabled but force_llm=True. Attempting to analyze anyway...")
+        
+        # Generate the analysis using the correct method
+        analysis = await llm_analyzer.analyze_risk(
+            patient_data=patient_data,
+            risk_score=risk_score,
+            risk_factors=risk_factors
+        )
+        
+        # Ensure the analysis has the required fields
+        if not analysis:
+            raise ValueError("Empty analysis result from LLM analyzer")
+            
+        return {
+            "analysis_available": True,
+            "summary": analysis.get("summary", "No summary available"),
+            "key_risk_factors": analysis.get("key_risk_factors", []),
+            "health_implications": analysis.get("health_implications", "No health implications available"),
+            "recommendations": analysis.get("recommendations", []),
+            "urgency_level": analysis.get("urgency_level", "medium")
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating LLM analysis: {str(e)}", exc_info=True)
+        return {
+            "analysis_available": False,
+            "reason": f"Error during analysis: {str(e)}"
+        }
+
+@router.post("/predict/simple", response_model=PredictionResponse)
+async def predict_health_risk_simple(patient: SimplePatientData):
+    """Predict health risk for a patient using simple data format"""
     try:
         logger.info("=== STARTING PREDICTION ===")
         # Load model
@@ -587,141 +627,88 @@ async def predict_health_risk_simple(patient: SimplePatientData, current_user = 
         
         # Convert simple data to model format
         patient_dict = patient.dict()
+        logger.info(f"Input patient data: {patient_dict}")
         
-        # Check if we have the EHR model with preprocessor
-        if 'preprocessor' in model_data and 'feature_columns' in model_data:
-            # Map simple patient data to EHR format
-            ehr_data = map_simple_to_ehr_features(patient_dict)
-            logger.info(f"Mapped to EHR features: {list(ehr_data.keys())[:10]}...")
+        # Extract force_llm flag and remove it from patient data to avoid model errors
+        force_llm = patient_dict.pop('force_llm', False)
+        logger.info(f"LLM analysis forced: {force_llm}")
+        
+        # Check if we have a fallback model or EHR model
+        model_type = model_data.get('model_type', 'unknown')
+        logger.info(f"Model type detected: {model_type}")
+        
+        if model_type in ['RandomForestClassifier', 'FallbackRandomForest', 'EmergencyFallback']:
+            # Use fallback model feature mapping
+            feature_data = map_simple_to_fallback_features(patient_dict)
+            logger.info(f"Mapped fallback data: {feature_data}")
             
-            # Use preprocessor to transform data
-            try:
-                preprocessor = model_data['preprocessor']
-                expected_features = model_data['feature_columns']
-                
-                # Create DataFrame with EHR data
-                df = pd.DataFrame([ehr_data])
-                logger.info(f"Generated features: {len(df.columns)}")
-                
-                # Ensure we have exactly the features the model expects
-                aligned_df = pd.DataFrame()
-                for feature in expected_features:
-                    if feature in df.columns:
-                        aligned_df[feature] = df[feature]
-                    else:
-                        # Set default values for missing features
-                        import numpy as np
-                        if 'IgE' in feature:
-                            aligned_df[feature] = [np.random.exponential(2)]
-                        elif feature in ['MicroalbuminCreatineRatio']:
-                            aligned_df[feature] = [np.random.uniform(0, 30)]
-                        elif feature in ['Oraltemperature']:
-                            aligned_df[feature] = [np.random.uniform(97, 99)]
-                        elif feature in ['TotalscoreMMSE']:
-                            aligned_df[feature] = [np.random.uniform(24, 30)]
-                        else:
-                            aligned_df[feature] = [0]
-                
-                logger.info(f"Aligned features: {len(aligned_df.columns)}")
-                
-                # Apply the same preprocessing steps as during training
-                df_processed = preprocessor.clean_data(aligned_df.copy())
-                df_encoded = preprocessor.encode_categorical_features(df_processed, fit=False)
-                df_scaled = preprocessor.scale_features(df_encoded, fit=False)
-                
-                # Final check - ensure exact feature match
-                if len(df_scaled.columns) != len(expected_features):
-                    logger.warning(f"Feature count mismatch: {len(df_scaled.columns)} vs {len(expected_features)}")
-                    # Force exact alignment
-                    final_df = pd.DataFrame()
-                    for feature in expected_features:
-                        if feature in df_scaled.columns:
-                            final_df[feature] = df_scaled[feature]
-                        else:
-                            final_df[feature] = [0]
-                    df_scaled = final_df
-                
-                # Make prediction
-                if hasattr(model, 'predict_proba'):
-                    risk_probability = float(model.predict_proba(df_scaled.values)[0][1])
-                    logger.info(f"EHR model prediction: {risk_probability:.3f}")
-                else:
-                    risk_probability = float(model.predict(df_scaled.values)[0])
-                    
-            except Exception as transform_error:
-                logger.error(f"EHR transformation error: {str(transform_error)}")
-                # Fall back to simple calculation
-                risk_probability = calculate_simple_risk_score(patient_dict)
-                logger.info(f"Using fallback calculation: {risk_probability:.3f}")
-                
-        elif 'label_encoders' in model_data and 'feature_columns' in model_data:
-            # Use the label encoder format
-            df = pd.DataFrame([patient_dict])
+            # Convert to DataFrame
+            df = pd.DataFrame([feature_data])
             
-            # Apply label encoding
-            for feature, encoder in model_data['label_encoders'].items():
-                if feature in df.columns:
-                    try:
-                        df[feature] = encoder.transform(df[feature].astype(str))
-                    except ValueError:
-                        # Handle unknown categories
-                        df[feature] = 0
-            
-            # Ensure all features are present
-            for col in model_data['feature_columns']:
-                if col not in df.columns:
-                    df[col] = 0
-            
-            # Reorder columns to match training
-            df = df[model_data['feature_columns']]
+            # Use scaler if available
+            if 'scaler' in model_data and model_data['scaler'] is not None:
+                df_scaled = model_data['scaler'].transform(df)
+                df = pd.DataFrame(df_scaled, columns=df.columns)
             
             # Make prediction
             if hasattr(model, 'predict_proba'):
                 risk_probability = float(model.predict_proba(df)[0][1])
+                logger.info(f"Fallback model prediction probability: {risk_probability:.3f}")
             else:
                 risk_probability = float(model.predict(df)[0])
-                
-        elif model_data.get('model_type') in ['FallbackRandomForest', 'EmergencyFallback']:
-            # Use a simple rule-based prediction for fallback models to provide dynamic results
-            risk_probability = calculate_simple_risk_score(patient_dict)
-            logger.info(f"Using simple risk calculation: {risk_probability:.3f}")
         else:
-            # Fallback to old method for older models
-            categorical_mappings = {
-                'sex': {'M': 1, 'F': 0},
-                'chest_pain_type': {'typical': 0, 'atypical': 1, 'non_anginal': 2, 'asymptomatic': 3},
-                'resting_ecg': {'normal': 0, 'abnormal': 1, 'hypertrophy': 2},
-                'slope': {'upsloping': 0, 'flat': 1, 'downsloping': 2},
-                'thal': {'normal': 0, 'fixed': 1, 'reversible': 2}
-            }
+            # Use EHR format for other models
+            ehr_data = map_simple_to_ehr_features(patient_dict)
+            logger.info(f"Mapped EHR data: {ehr_data}")
             
-            # Convert categorical features
-            processed_data = patient_dict.copy()
-            for feature, mapping in categorical_mappings.items():
-                if feature in processed_data:
-                    processed_data[feature] = mapping.get(processed_data[feature], 0)
+            # Convert to DataFrame
+            df = pd.DataFrame([ehr_data])
             
-            # Create feature array in the correct order
-            feature_order = [
-                'age', 'sex', 'height', 'weight', 'bmi', 'resting_bp', 'max_heart_rate',
-                'cholesterol', 'hdl_cholesterol', 'ldl_cholesterol', 'triglycerides',
-                'fasting_blood_sugar', 'hba1c', 'chest_pain_type', 'resting_ecg',
-                'exercise_angina', 'oldpeak', 'slope', 'ca', 'thal'
-            ]
-            
-            feature_vector = []
-            for feature in feature_order:
-                value = processed_data.get(feature, 0)
-                feature_vector.append(float(value))
-            
-            # Make prediction
-            import numpy as np
-            feature_array = np.array([feature_vector])
-            
-            if hasattr(model, 'predict_proba'):
-                risk_probability = float(model.predict_proba(feature_array)[0][1])
+            # Handle different model types
+            if hasattr(model, 'feature_names_in_'):
+                # Model has feature names (sklearn-style)
+                expected_features = model.feature_names_in_
+                
+                # Ensure we have all required features
+                missing_features = [f for f in expected_features if f not in df.columns]
+                
+                if missing_features:
+                    logger.warning(f"Missing features in input data: {missing_features}")
+                    # Fill missing features with defaults
+                    for f in missing_features:
+                        df[f] = 0
+                
+                # Reorder columns to match training
+                df = df[expected_features]
+                
+                # Make prediction
+                if hasattr(model, 'predict_proba'):
+                    risk_probability = float(model.predict_proba(df)[0][1])
+                    logger.info(f"Model prediction probability: {risk_probability:.3f}")
+                else:
+                    risk_probability = float(model.predict(df)[0])
+                    
+            elif 'feature_columns' in model_data:
+                # Handle models with explicit feature columns
+                expected_features = model_data['feature_columns']
+                
+                # Ensure all features are present
+                for col in expected_features:
+                    if col not in df.columns:
+                        df[col] = 0
+                
+                # Reorder columns to match training
+                df = df[expected_features]
+                
+                # Make prediction
+                if hasattr(model, 'predict_proba'):
+                    risk_probability = float(model.predict_proba(df)[0][1])
+                else:
+                    risk_probability = float(model.predict(df)[0])
             else:
-                risk_probability = float(model.predict(feature_array)[0])
+                # Fallback to simple risk calculation
+                risk_probability = calculate_simple_risk_score(patient_dict)
+                logger.info(f"Using simple risk calculation fallback: {risk_probability:.3f}")
         
         # Calculate confidence
         confidence = abs(risk_probability - 0.5) * 2
@@ -738,13 +725,33 @@ async def predict_health_risk_simple(patient: SimplePatientData, current_user = 
         recommendations = generate_recommendations(patient_dict, risk_probability)
         risk_factors = identify_simple_risk_factors(patient_dict)
         
-        return PredictionResponse(
+        # Generate LLM analysis in the background
+        llm_analysis_obj = None
+        try:
+            llm_analysis_result = await _generate_llm_analysis(patient_dict, risk_probability, risk_factors, force_llm)
+            if llm_analysis_result and isinstance(llm_analysis_result, dict):
+                llm_analysis_obj = LLMAnalysis(**llm_analysis_result)
+        except Exception as e:
+            logger.error(f"Error generating LLM analysis: {str(e)}", exc_info=True)
+            # Create a fallback LLM analysis object
+            llm_analysis_obj = LLMAnalysis(
+                analysis_available=False,
+                reason=f"LLM analysis failed: {str(e)}"
+            )
+        
+        # Create response with LLM analysis
+        response = PredictionResponse(
             risk_probability=float(risk_probability),
             risk_level=risk_level,
             recommendations=recommendations,
             risk_factors=risk_factors,
-            confidence=float(confidence)
+            confidence=float(confidence),
+            llm_analysis=llm_analysis_obj
         )
+        
+        logger.info(f"=== PREDICTION COMPLETED ===")
+        logger.info(f"Risk Level: {risk_level}, Probability: {risk_probability:.3f}")
+        return response
         
     except Exception as e:
         logger.error(f"Simple prediction error: {str(e)}")
@@ -758,7 +765,11 @@ async def predict_health_risk_simple(patient: SimplePatientData, current_user = 
                 "Regular health check-ups recommended"
             ],
             risk_factors=["Assessment temporarily unavailable"],
-            confidence=0.5
+            confidence=0.5,
+            llm_analysis=LLMAnalysis(
+                analysis_available=False,
+                reason="Prediction error occurred"
+            )
         )
 def identify_simple_risk_factors(patient_data: dict) -> List[str]:
     """Identify current risk factors based on simple patient data"""

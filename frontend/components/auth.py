@@ -315,8 +315,15 @@ def render_login_page():
                             st.session_state.access_token = user_data.get('token', {}).get('access_token')
                             st.session_state.login_time = datetime.now().isoformat()
                             
+                            # Set default page based on role
+                            role = st.session_state.user_data.get('role', '').lower()
+                            if role == 'doctor':
+                                st.session_state.page = '👥 Patient Management'
+                            else:
+                                st.session_state.page = '🏠 Risk Assessment'
+                            
                             st.success(f"✅ Welcome, {st.session_state.user_data.get('full_name', 'User')}!")
-                            time.sleep(1)
+                            time.sleep(0.5)
                             st.rerun()
                         else:
                             st.error(f"❌ {message}")
@@ -358,7 +365,7 @@ def render_login_page():
                 
                 role = st.selectbox(
                     "Account Type",
-                    ["patient", "doctor", "nurse"],
+                    ["patient", "doctor"],
                     help="Select your role in the healthcare system",
                     label_visibility="visible"
                 )
@@ -386,8 +393,19 @@ def render_login_page():
                             )
                         
                         if success:
-                            st.success(f"✅ {message}")
-                            st.info("Please use the 'Sign In' tab to log in with your new account.")
+                            # Show success message and reset form
+                            st.success("✅ Account created successfully! Please sign in with your new credentials.")
+                            
+                            # Clear the form
+                            st.session_state.signup_form_full_name = ""
+                            st.session_state.signup_form_email = ""
+                            st.session_state.signup_form_password = ""
+                            st.session_state.signup_form_confirm_password = ""
+                            
+                            # Switch to the login tab
+                            st.session_state.active_tab = "Sign In"
+                            time.sleep(0.5)
+                            st.rerun()
                         else:
                             st.error(f"❌ {message}")
         
@@ -458,7 +476,7 @@ def render_user_info():
         st.sidebar.markdown("---")
         
         # Logout button
-        if st.sidebar.button("🚪 Logout", type="primary", use_container_width=True):
+        if st.sidebar.button("🚪 Logout", type="primary", use_container_width=True, key="user_info_logout_btn"):
             logout_user()
 
 
