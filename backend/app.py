@@ -15,18 +15,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import prediction routes
+predict_router = None
+predict_available = False
+
 try:
-    # Try relative import first when running directly
     from routes.predict import router as predict_router
+    predict_available = True
     print("✓ Prediction routes imported successfully (relative)")
 except ImportError:
     try:
-        # Fallback to absolute import for uvicorn
         from backend.routes.predict import router as predict_router
+        predict_available = True
         print("✓ Prediction routes imported successfully (absolute)")
     except ImportError as e:
         print(f"✗ Failed to import prediction routes: {e}")
         predict_router = None
+        predict_available = False
+        print("⚠️  Prediction module not available")
 
 # Import chatbot routes
 chatbot_router = None
@@ -85,6 +90,25 @@ except ImportError:
         medical_report_available = False
         print("⚠️  Medical report analysis module not available")
 
+# Import health log routes
+health_log_router = None
+health_log_available = False
+
+try:
+    from routes.health_log import router as health_log_router
+    health_log_available = True
+    print("✓ Health log routes imported successfully (relative)")
+except ImportError:
+    try:
+        from backend.routes.health_log import router as health_log_router
+        health_log_available = True
+        print("✓ Health log routes imported successfully (absolute)")
+    except ImportError as e:
+        print(f"Failed to import health log routes: {e}")
+        health_log_router = None
+        health_log_available = False
+        print("⚠️  Health log module not available")
+
 # Import authentication routes with absolute imports first
 auth_router = None
 auth_available = False
@@ -120,7 +144,7 @@ app = FastAPI(
 )
 
 # CORS middleware for frontend integration
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8501,http://localhost:8000").split(",")
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:8501,http://localhost:8503,http://localhost:8000,http://localhost:8002").split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,  # Load from environment variables
@@ -130,7 +154,7 @@ app.add_middleware(
 )
 
 # Include routes
-if predict_router:
+if predict_available and predict_router:
     app.include_router(predict_router, prefix="/api", tags=["predictions"])
     print("✓ Prediction routes registered at /api")
 else:
@@ -165,10 +189,24 @@ if medical_report_available and medical_report_router:
     print("  - GET /api/medical-report/download/{analysis_id}")
     print("  - GET /api/medical-report/list")
     print("  - DELETE /api/medical-report/analysis/{analysis_id}")
+    print("  - GET /api/medical-report/lifestyle-recommendations/{analysis_id}")
     print("  - GET /api/medical-report/statistics")
     print("  - GET /api/medical-report/health")
 else:
     print("⚠️  Running without medical report analysis functionality")
+
+if health_log_available and health_log_router:
+    app.include_router(health_log_router, prefix="/api/health-log", tags=["health-log"])
+    print("✓ Health log routes registered at /api/health-log")
+    print("Available health log endpoints:")
+    print("  - POST /api/health-log/")
+    print("  - GET /api/health-log/")
+    print("  - PUT /api/health-log/{entry_id}")
+    print("  - DELETE /api/health-log/{entry_id}")
+    print("  - GET /api/health-log/statistics")
+    print("  - GET /api/health-log/health")
+else:
+    print("⚠️  Running without health log functionality")
 
 if auth_available and auth_router:
     app.include_router(auth_router, prefix="/api/auth", tags=["authentication"])

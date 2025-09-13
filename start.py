@@ -12,15 +12,15 @@ from pathlib import Path
 def start_backend():
     """Start the backend server"""
     print("🚀 Starting Healthcare Backend Server...")
-    print("📍 Available at: http://localhost:8000")
-    print("📚 API Documentation: http://localhost:8000/docs")
+    print("📍 Available at: http://localhost:8002")
+    print("📚 API Documentation: http://localhost:8002/docs")
     print("-" * 50)
     
     backend_cmd = [
         sys.executable, "-m", "uvicorn",
         "backend.app:app",
         "--host", "0.0.0.0",
-        "--port", "8000",
+        "--port", "8002",
         "--reload"
     ]
     
@@ -29,13 +29,13 @@ def start_backend():
 def start_frontend():
     """Start the frontend server"""
     print("🎨 Starting Healthcare Frontend...")
-    print("📍 Available at: http://localhost:8501")
+    print("📍 Available at: http://localhost:8503")
     print("-" * 50)
     
     frontend_cmd = [
         sys.executable, "-m", "streamlit",
         "run", "frontend/app.py",
-        "--server.port", "8501"
+        "--server.port", "8503"
     ]
     
     return subprocess.Popen(frontend_cmd)

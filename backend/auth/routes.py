@@ -194,12 +194,7 @@ async def test_connection():
             "status": "ok",
             "message": "Authentication service is running with database storage",
             "users_available": len(users),
-            "storage_type": "SQLite Database",
-            "test_credentials": {
-                "admin": {"email": "admin@healthcare.com", "password": "Admin123!"},
-                "doctor": {"email": "doctor@healthcare.com", "password": "Doctor123!"},
-                "patient": {"email": "patient@healthcare.com", "password": "Patient123!"}
-            }
+            "storage_type": "SQLite Database"
         }
     except Exception as e:
         return {
@@ -452,23 +447,4 @@ async def create_session(current_user = Depends(get_current_user)):
     }
 
 
-@router.get("/default-users")
-async def get_default_users():
-    """Get default user credentials for testing (remove in production!)"""
-    return {
-        "admin": {
-            "email": "admin@healthcare.com",
-            "password": "Admin123!",
-            "role": "admin"
-        },
-        "doctor": {
-            "email": "doctor@healthcare.com", 
-            "password": "Doctor123!",
-            "role": "doctor"
-        },
-        "patient": {
-            "email": "patient@healthcare.com",
-            "password": "Patient123!",
-            "role": "patient"
-        }
-    }
+# Removed default test credentials endpoint for security

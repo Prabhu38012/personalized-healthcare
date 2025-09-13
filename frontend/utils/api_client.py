@@ -1,6 +1,7 @@
 """
 API utilities for frontend communication with backend services
 """
+from typing import Dict, Any, Optional
 import requests
 import streamlit as st
 import time
@@ -10,7 +11,7 @@ from .caching import cached_health_check, cached_model_info
 class APIClient:
     """General API client for backend communication"""
     
-    def __init__(self, base_url="http://localhost:8000"):
+    def __init__(self, base_url="http://localhost:8002"):
         self.base_url = base_url
         self.auth_headers = {}
     
@@ -22,7 +23,7 @@ class APIClient:
 class HealthcareAPI:
     """Healthcare API client for making requests to the backend"""
     
-    def __init__(self, base_url="http://localhost:8000/api"):
+    def __init__(self, base_url="http://localhost:8002/api"):
         self.base_url = base_url
         self.auth_headers = {}
     
@@ -30,23 +31,92 @@ class HealthcareAPI:
         """Set authentication headers"""
         self.auth_headers = headers or {}
     
-    def make_lab_prediction(self, patient_data, force_llm=False):
-        """Make API call to get lab-enhanced AI prediction
-        
-        Args:
-            patient_data (dict): Dictionary containing patient data with lab values
-            force_llm (bool): Whether to force LLM analysis even if it's disabled by default
+    def _make_request(self, method, endpoint, **kwargs):
+        """Make HTTP request with comprehensive error handling and token refresh"""
+        try:
+            headers = {**self.auth_headers, "Content-Type": "application/json"}
+            if 'headers' in kwargs:
+                headers.update(kwargs['headers'])
+            kwargs['headers'] = headers
             
-        Returns:
-            dict: Lab-enhanced prediction results including risk assessment and recommendations from AI
-        """
-        # Include all patient data for AI analysis - it can handle comprehensive lab data
-        filtered_data = dict(patient_data)  # Create a copy
-        
-        # Add force_llm flag to the request data
+            if 'timeout' not in kwargs:
+                kwargs['timeout'] = 30
+            
+            url = f"{self.base_url}{endpoint}"
+            response = requests.request(method, url, **kwargs)
+            
+            # Handle authentication errors specifically
+            if response.status_code == 401:
+                st.error("🔒 Authentication expired. Please log in again.")
+                # Clear authentication state
+                if 'authenticated' in st.session_state:
+                    st.session_state.authenticated = False
+                st.rerun()
+                return None
+            elif response.status_code == 403:
+                st.error("🚫 Access denied. You don't have permission for this action.")
+                return None
+            
+            response.raise_for_status()
+            
+            # Handle different content types
+            content_type = response.headers.get('content-type', '')
+            if 'application/json' in content_type:
+                return response.json()
+            else:
+                return response.content
+                
+        except requests.exceptions.HTTPError as http_err:
+            status_code = getattr(http_err.response, 'status_code', None)
+            
+            # Get detailed error information for debugging
+            error_detail = None
+            if hasattr(http_err, 'response') and http_err.response.text:
+                try:
+                    error_detail = http_err.response.json().get('detail', http_err.response.text)
+                except:
+                    error_detail = http_err.response.text[:200]
+            
+            # Provide user-friendly error messages based on status codes
+            if status_code == 422:
+                st.error("📝 Invalid data provided. Please check your input and try again.")
+                if error_detail:
+                    st.error(f"Details: {error_detail}")
+            elif status_code == 404:
+                st.error("🔍 Requested resource not found.")
+            elif status_code == 500:
+                st.error("🔧 Server error occurred. Please try again later.")
+                if error_detail:
+                    st.error(f"Error details: {error_detail}")
+            else:
+                error_msg = f"Request failed (HTTP {status_code})"
+                if error_detail:
+                    error_msg += f": {error_detail}"
+                st.error(error_msg)
+            return None
+            
+        except requests.exceptions.Timeout:
+            st.error("⏱️ Request timed out. The server may be busy. Please try again.")
+            return None
+            
+        except requests.exceptions.ConnectionError:
+            st.error("🌐 Cannot connect to backend service. Please check if the server is running.")
+            return None
+            
+        except requests.exceptions.RequestException as e:
+            st.error(f"🔌 Network error: {str(e)}")
+            return None
+            
+        except Exception as e:
+            st.error(f"❌ Unexpected error: {str(e)}")
+            return None
+
+    def make_lab_prediction(self, patient_data, force_llm=False):
+        """Make API call to get lab-enhanced AI prediction"""
+        filtered_data = dict(patient_data)
         filtered_data['force_llm'] = force_llm
         
-        # Convert numeric fields to appropriate types for better AI analysis
+        # Convert numeric fields to appropriate types
         numeric_fields = ['age', 'resting_bp', 'systolic_bp', 'diastolic_bp', 'cholesterol', 
                          'total_cholesterol', 'hdl_cholesterol', 'ldl_cholesterol',
                          'triglycerides', 'fasting_blood_sugar', 'max_heart_rate', 'ca',
@@ -75,74 +145,28 @@ class HealthcareAPI:
                 except (ValueError, TypeError):
                     pass
         
-        # Map legacy field names to new ones for better compatibility
+        # Map legacy field names
         if 'resting_bp' in filtered_data and 'systolic_bp' not in filtered_data:
             filtered_data['systolic_bp'] = filtered_data['resting_bp']
         if 'cholesterol' in filtered_data and 'total_cholesterol' not in filtered_data:
             filtered_data['total_cholesterol'] = filtered_data['cholesterol']
         
-        try:
-            headers = {**self.auth_headers, "Content-Type": "application/json"}
+        with st.spinner("🔬 Analyzing lab data..."):
+            result = self._make_request('POST', '/predict/lab', json=filtered_data)
             
-            # Use traditional model only for fast, consistent results
-            filtered_data['force_llm'] = False
+        if result:
+            result['powered_by_ai'] = False
+            result['lab_enhanced'] = True
+            result['analysis_type'] = 'Lab Analysis'
             
-            with st.spinner("🔬 Analyzing lab data (traditional model)..."):
-                response = requests.post(
-                    f"{self.base_url}/predict/lab",
-                    json=filtered_data,
-                    headers=headers,
-                    timeout=30  # Short timeout for traditional analysis
-                )
-                response.raise_for_status()  # Raise an exception for 4XX/5XX responses
-                
-                result = response.json()
-                
-                # Add flags to indicate this is traditional lab prediction
-                if result:
-                    result['powered_by_ai'] = False
-                    result['lab_enhanced'] = True
-                    result['analysis_type'] = 'Traditional Lab Analysis'
-                    
-                return result
-                
-        except requests.exceptions.HTTPError as http_err:
-            error_msg = f"HTTP error occurred: {http_err}"
-            if 'response' in locals() and response.text:
-                try:
-                    error_detail = response.json().get('detail', response.text)
-                    error_msg += f" - {error_detail}"
-                except:
-                    error_msg += f" - {response.text}"
-            st.error(error_msg)
-            return None
-        except requests.exceptions.Timeout as e:
-            st.error("⏱️ Analysis timed out. Please try again.")
-            return None
-        except requests.exceptions.RequestException as e:
-            st.error(f"Failed to connect to the AI lab prediction service. Please ensure the backend server is running.\nError: {str(e)}")
-            return None
-        except Exception as e:
-            st.error(f"Error making AI lab prediction: {str(e)}")
-            return None
+        return result
 
     def make_prediction(self, patient_data, force_llm=False):
-        """Make API call to get AI-powered prediction
-        
-        Args:
-            patient_data (dict): Dictionary containing patient data
-            force_llm (bool): Whether to force LLM analysis even if it's disabled by default
-            
-        Returns:
-            dict: Prediction results including risk assessment and recommendations from AI
-        """
-        # Include all patient data for AI analysis - it can handle comprehensive data
-        filtered_data = dict(patient_data)  # Create a copy
-        
-        # Add force_llm flag to the request data
+        """Make API call to get AI-powered prediction"""
+        filtered_data = dict(patient_data)
         filtered_data['force_llm'] = force_llm
         
-        # Convert numeric fields to appropriate types for better AI analysis
+        # Convert numeric fields
         numeric_fields = ['age', 'resting_bp', 'systolic_bp', 'diastolic_bp', 'cholesterol', 
                          'total_cholesterol', 'hdl_cholesterol', 'ldl_cholesterol',
                          'triglycerides', 'fasting_blood_sugar', 'max_heart_rate', 'ca']
@@ -163,68 +187,33 @@ class HealthcareAPI:
                 except (ValueError, TypeError):
                     pass
         
-        # Map legacy field names to new ones for better compatibility
+        # Map legacy field names
         if 'resting_bp' in filtered_data and 'systolic_bp' not in filtered_data:
             filtered_data['systolic_bp'] = filtered_data['resting_bp']
         if 'cholesterol' in filtered_data and 'total_cholesterol' not in filtered_data:
             filtered_data['total_cholesterol'] = filtered_data['cholesterol']
         
-        try:
-            headers = {**self.auth_headers, "Content-Type": "application/json"}
-            try:
-                # Show user that we're using AI
-                with st.spinner("🤖 Analyzing with AI..."):
-                    response = requests.post(
-                        f"{self.base_url}/predict/simple",
-                        json=filtered_data,
-                        headers=headers,
-                        timeout=45  # Increased timeout for AI API calls
-                    )
-                response.raise_for_status()  # Raise an exception for 4XX/5XX responses
-                
-                result = response.json()
-                
-                # Add a flag to indicate this is an AI-powered prediction
-                if result:
-                    result['powered_by_ai'] = True
-                    
-                return result
-                
-            except requests.exceptions.HTTPError as http_err:
-                error_msg = f"HTTP error occurred: {http_err}"
-                if 'response' in locals() and response.text:
-                    try:
-                        error_detail = response.json().get('detail', response.text)
-                        error_msg += f" - {error_detail}"
-                    except:
-                        error_msg += f" - {response.text}"
-            st.error(error_msg)
-            return None
-        except requests.exceptions.RequestException as e:
-            st.error(f"Failed to connect to the AI prediction service. Please ensure the backend server is running.\nError: {str(e)}")
-            return None
-        except Exception as e:
-            st.error(f"Error making AI prediction: {str(e)}")
-            return None
+        with st.spinner("🤖 Analyzing with AI..."):
+            result = self._make_request('POST', '/predict/simple', json=filtered_data, timeout=45)
+            
+        if result:
+            result['powered_by_ai'] = True
+            
+        return result
     
     def check_backend_health(self):
-        """Check if backend is healthy - using global cached function"""
+        """Check if backend is healthy"""
         return cached_health_check(self.base_url)
     
     def get_model_info(self):
-        """Get model information from backend - using global cached function"""
+        """Get model information from backend"""
         return cached_model_info(self.base_url)
     
     def reload_model(self):
         """Force reload the model on backend"""
-        try:
-            response = requests.get(f"{self.base_url}/reload-model", timeout=10)
-            if response.status_code == 200:
-                return response.json()
-        except:
-            pass
-        return None
+        return self._make_request('GET', '/reload-model', timeout=10)
     
+    # Medical Report Analysis Methods
     def upload_medical_report(self, file_data, patient_name):
         """Upload and analyze medical report"""
         try:
@@ -238,89 +227,131 @@ class HealthcareAPI:
                     files=files,
                     data=data,
                     headers=headers,
-                    timeout=120  # Longer timeout for file processing
+                    timeout=120
                 )
             response.raise_for_status()
             return response.json()
             
-        except requests.exceptions.HTTPError as http_err:
-            error_msg = f"HTTP error occurred: {http_err}"
-            if 'response' in locals() and response.text:
-                try:
-                    error_detail = response.json().get('detail', response.text)
-                    error_msg += f" - {error_detail}"
-                except:
-                    error_msg += f" - {response.text}"
-            st.error(error_msg)
-            return None
-        except requests.exceptions.RequestException as e:
-            st.error(f"Failed to connect to medical report service. Error: {str(e)}")
-            return None
         except Exception as e:
             st.error(f"Error uploading medical report: {str(e)}")
             return None
     
     def get_analysis(self, analysis_id):
         """Get medical report analysis by ID"""
-        try:
-            headers = {**self.auth_headers}
-            response = requests.get(
-                f"{self.base_url}/medical-report/analysis/{analysis_id}",
-                headers=headers,
-                timeout=30
-            )
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            st.error(f"Error retrieving analysis: {str(e)}")
-            return None
+        return self._make_request('GET', f'/medical-report/analysis/{analysis_id}')
     
     def list_analyses(self, patient_name=None, limit=50):
         """List medical report analyses"""
-        try:
-            headers = {**self.auth_headers}
-            params = {"limit": limit}
-            if patient_name:
-                params["patient_name"] = patient_name
-                
-            response = requests.get(
-                f"{self.base_url}/medical-report/list",
-                headers=headers,
-                params=params,
-                timeout=30
-            )
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            st.error(f"Error listing analyses: {str(e)}")
-            return None
+        params = {"limit": limit}
+        if patient_name:
+            params["patient_name"] = patient_name
+        return self._make_request('GET', '/medical-report/list', params=params)
     
     def download_report(self, analysis_id):
         """Download PDF report"""
-        try:
-            headers = {**self.auth_headers}
-            response = requests.get(
-                f"{self.base_url}/medical-report/download/{analysis_id}",
-                headers=headers,
-                timeout=60
-            )
-            response.raise_for_status()
-            return response.content
-        except Exception as e:
-            st.error(f"Error downloading report: {str(e)}")
-            return None
+        return self._make_request('GET', f'/medical-report/download/{analysis_id}', timeout=60)
     
     def delete_analysis(self, analysis_id):
         """Delete medical report analysis"""
+        return self._make_request('DELETE', f'/medical-report/analysis/{analysis_id}')
+    
+    def get_lifestyle_recommendations(self, analysis_id: str) -> Optional[Dict[str, Any]]:
+        """Get lifestyle recommendations for analysis
+        
+        Args:
+            analysis_id: The ID of the analysis to get recommendations for
+            
+        Returns:
+            Dict containing lifestyle recommendations or None if not available
+        """
+        try:
+            response = self._make_request('GET', f'/medical-report/lifestyle-recommendations/{analysis_id}')
+            if not response:
+                return None
+                
+            # Transform the response to match the expected format
+            return {
+                'diet_recommendations': response.get('diet_recommendations', []),
+                'exercise_recommendations': response.get('exercise_recommendations', []),
+                'lifestyle_recommendations': response.get('lifestyle_recommendations', [])
+            }
+            
+        except Exception as e:
+            st.error(f"Error fetching lifestyle recommendations: {str(e)}")
+            return None
+    
+    # Health Log Data Persistence Methods
+    def save_health_data(self, health_data):
+        """Save health log data to backend"""
+        return self._make_request('POST', '/health-log/', json=health_data)
+    
+    def get_health_data(self, user_id=None, limit=100):
+        """Get health log data from backend"""
+        params = {"limit": limit}
+        if user_id:
+            params["user_id"] = user_id
+        return self._make_request('GET', '/health-log/', params=params)
+    
+    def update_health_data(self, entry_id, health_data):
+        """Update health log entry"""
+        return self._make_request('PUT', f'/health-log/{entry_id}', json=health_data)
+    
+    def delete_health_data(self, entry_id):
+        """Delete health log entry"""
+        return self._make_request('DELETE', f'/health-log/{entry_id}')
+    
+    # User Management Methods (Admin)
+    def get_users(self):
+        """Get all users (admin only)"""
+        return self._make_request('GET', '/auth/users')
+    
+    def create_user(self, user_data):
+        """Create new user (admin only)"""
+        return self._make_request('POST', '/auth/register', json=user_data)
+    
+    def update_user(self, user_id, user_data):
+        """Update user (admin only)"""
+        return self._make_request('PUT', f'/auth/users/{user_id}', json=user_data)
+    
+    def delete_user(self, user_id):
+        """Delete user (admin only)"""
+        return self._make_request('DELETE', f'/auth/users/{user_id}')
+    
+    # Chatbot Methods
+    def send_chat_message(self, message, context=None):
+        """Send message to chatbot"""
+        data = {"message": message}
+        if context:
+            data["context"] = context
+        return self._make_request('POST', '/chat', json=data)
+    
+    def explain_risk(self, prediction_data):
+        """Get risk explanation from chatbot"""
+        return self._make_request('POST', '/chat/explain-risk', json=prediction_data)
+    
+    # Prescription Analysis Methods
+    def upload_prescription(self, file_data, patient_name):
+        """Upload and analyze prescription"""
         try:
             headers = {**self.auth_headers}
-            response = requests.delete(
-                f"{self.base_url}/medical-report/analysis/{analysis_id}",
-                headers=headers,
-                timeout=30
-            )
+            files = {"file": file_data}
+            data = {"patient_name": patient_name}
+            
+            with st.spinner("💊 Analyzing prescription..."):
+                response = requests.post(
+                    f"{self.base_url}/prescription/upload",
+                    files=files,
+                    data=data,
+                    headers=headers,
+                    timeout=60
+                )
             response.raise_for_status()
             return response.json()
+            
         except Exception as e:
-            st.error(f"Error deleting analysis: {str(e)}")
+            st.error(f"Error uploading prescription: {str(e)}")
             return None
+    
+    def get_medicine_info(self, medicine_name):
+        """Get medicine information"""
+        return self._make_request('POST', '/prescription/medicine-info', json={"medicine_name": medicine_name})

@@ -4,6 +4,9 @@ import numpy as np
 class LabPatientInputForm:
     def __init__(self):
         self.patient_data = {}
+        # Initialize session state for form data persistence
+        if 'lab_form_data' not in st.session_state:
+            st.session_state.lab_form_data = {}
     
     def render(self):
         """Render comprehensive lab-enhanced patient input form"""
@@ -16,6 +19,7 @@ class LabPatientInputForm:
             "Basic Info", "Complete Blood Count", "Differential Count", "Platelets & Other"
         ])
         
+        # Always render all sections to maintain state, but show them in tabs
         with basic_tab:
             self._render_basic_info()
         
@@ -27,6 +31,9 @@ class LabPatientInputForm:
         
         with platelets_tab:
             self._render_platelets_section()
+        
+        # Store form data in session state to persist across tab switches
+        st.session_state.lab_form_data = self.patient_data.copy()
         
         return self.patient_data
     

@@ -26,9 +26,11 @@ except ImportError:
 try:
     from backend.models.medical_report_analyzer import MedicalReportAnalyzer, MedicalReport
     from backend.models.report_generator import MedicalReportGenerator
+    from backend.utils.lifestyle_recommender import lifestyle_engine
 except ImportError:
     from models.medical_report_analyzer import MedicalReportAnalyzer, MedicalReport
     from models.report_generator import MedicalReportGenerator
+    from utils.lifestyle_recommender import lifestyle_engine
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -397,6 +399,149 @@ async def reanalyze_report(analysis_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         logger.error(f"Re-analysis failed: {e}")
         raise HTTPException(status_code=500, detail=f"Re-analysis failed: {str(e)}")
+
+@router.get("/lifestyle-recommendations/{analysis_id}")
+async def get_detailed_lifestyle_recommendations(
+    analysis_id: str,
+    db: Session = Depends(get_db)
+):
+    """Get detailed lifestyle recommendations for a specific analysis"""
+    try:
+        # Get the analysis from database - try both string and UUID formats
+        analysis = db.query(MedicalReportAnalysis).filter(
+            MedicalReportAnalysis.id == analysis_id
+        ).first()
+        
+        # If not found, try different approaches to find the analysis
+        if not analysis:
+            # Try to find by any field that might contain this ID
+            try:
+                # Check if there's an analysis_id column or similar
+                analysis = db.query(MedicalReportAnalysis).filter(
+                    MedicalReportAnalysis.filename.contains(analysis_id[-8:])  # Last 8 chars as fallback
+                ).first()
+            except:
+                pass
+        
+        if not analysis:
+            # Instead of failing, generate basic lifestyle recommendations
+            logger.warning(f"Analysis not found for ID: {analysis_id}. Generating basic recommendations.")
+            
+            # Generate basic lifestyle plan without specific analysis data
+            lifestyle_plan = lifestyle_engine.generate_comprehensive_plan(
+                conditions=[],
+                lab_values=[],
+                patient_age=None,
+                patient_sex=None,
+                current_medications=[]
+            )
+            
+            # Return basic recommendations
+            return {
+                "analysis_id": analysis_id,
+                "diet_recommendations": [
+                    {
+                        "category": diet.category,
+                        "foods_to_include": diet.foods_to_include,
+                        "foods_to_avoid": diet.foods_to_avoid,
+                        "meal_suggestions": diet.meal_suggestions,
+                        "nutritional_goals": diet.nutritional_goals,
+                        "portion_guidelines": diet.portion_guidelines
+                    }
+                    for diet in lifestyle_plan.diet_recommendations
+                ],
+                "exercise_recommendations": [
+                    {
+                        "category": exercise.category,
+                        "recommended_activities": exercise.recommended_activities,
+                        "frequency": exercise.frequency,
+                        "duration": exercise.duration,
+                        "intensity": exercise.intensity,
+                        "precautions": exercise.precautions,
+                        "progression_tips": exercise.progression_tips
+                    }
+                    for exercise in lifestyle_plan.exercise_recommendations
+                ],
+                "lifestyle_recommendations": [
+                    {
+                        "category": lifestyle.category,
+                        "recommendations": lifestyle.recommendations,
+                        "benefits": lifestyle.benefits,
+                        "implementation_tips": lifestyle.implementation_tips
+                    }
+                    for lifestyle in lifestyle_plan.lifestyle_recommendations
+                ],
+                "priority_actions": lifestyle_plan.priority_actions,
+                "monitoring_suggestions": lifestyle_plan.monitoring_suggestions,
+                "professional_consultations": lifestyle_plan.professional_consultations
+            }
+        
+        # Parse the stored analysis data
+        import json
+        analysis_data = json.loads(analysis.analysis_data)
+        
+        # Extract conditions and lab values
+        conditions = [cond.get('text', '') for cond in analysis_data.get('conditions', [])]
+        lab_values = [lab.get('text', '') for lab in analysis_data.get('lab_values', [])]
+        
+        # Generate comprehensive lifestyle plan
+        lifestyle_plan = lifestyle_engine.generate_comprehensive_plan(
+            conditions=conditions,
+            lab_values=lab_values,
+            patient_age=None,  # Could be extracted from report if available
+            patient_sex=None,  # Could be extracted from report if available
+            current_medications=[med.get('text', '') for med in analysis_data.get('medications', [])]
+        )
+        
+        # Format response
+        response = {
+            "analysis_id": analysis_id,
+            "patient_name": analysis.patient_name,
+            "analysis_date": analysis.analysis_date.isoformat(),
+            "diet_recommendations": [
+                {
+                    "category": diet.category,
+                    "foods_to_include": diet.foods_to_include,
+                    "foods_to_avoid": diet.foods_to_avoid,
+                    "meal_suggestions": diet.meal_suggestions,
+                    "nutritional_goals": diet.nutritional_goals,
+                    "portion_guidelines": diet.portion_guidelines
+                }
+                for diet in lifestyle_plan.diet_recommendations
+            ],
+            "exercise_recommendations": [
+                {
+                    "category": exercise.category,
+                    "recommended_activities": exercise.recommended_activities,
+                    "frequency": exercise.frequency,
+                    "duration": exercise.duration,
+                    "intensity": exercise.intensity,
+                    "precautions": exercise.precautions,
+                    "progression_tips": exercise.progression_tips
+                }
+                for exercise in lifestyle_plan.exercise_recommendations
+            ],
+            "lifestyle_recommendations": [
+                {
+                    "category": lifestyle.category,
+                    "recommendations": lifestyle.recommendations,
+                    "benefits": lifestyle.benefits,
+                    "implementation_tips": lifestyle.implementation_tips
+                }
+                for lifestyle in lifestyle_plan.lifestyle_recommendations
+            ],
+            "priority_actions": lifestyle_plan.priority_actions,
+            "monitoring_suggestions": lifestyle_plan.monitoring_suggestions,
+            "professional_consultations": lifestyle_plan.professional_consultations
+        }
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Failed to get lifestyle recommendations: {e}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to get lifestyle recommendations: {str(e)}")
 
 @router.get("/statistics")
 async def get_analysis_statistics(db: Session = Depends(get_db)):

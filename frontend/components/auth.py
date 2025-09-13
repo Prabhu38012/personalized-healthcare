@@ -12,7 +12,7 @@ import time
 class AuthManager:
     """Handles authentication state and API calls"""
     
-    def __init__(self, backend_url: str = "http://localhost:8000"):
+    def __init__(self, backend_url: str = "http://localhost:8002"):
         self.backend_url = backend_url
         self.auth_endpoint = f"{backend_url}/api/auth"
     
@@ -94,19 +94,8 @@ class AuthManager:
             return None
     
     def get_default_credentials(self) -> dict:
-        """Get default test credentials"""
-        try:
-            response = requests.get(
-                f"{self.auth_endpoint}/default-users",
-                timeout=5
-            )
-            
-            if response.status_code == 200:
-                return response.json()
-            else:
-                return {}
-        except:
-            return {}
+        """Get default test credentials - returns empty dict as we don't use default credentials in production"""
+        return {}
     
     def signup(self, email: str, password: str, full_name: str, role: str = "patient") -> tuple[bool, str, dict]:
         """
@@ -154,28 +143,48 @@ def init_session_state():
         st.session_state.login_time = None
     if 'auth_manager' not in st.session_state:
         st.session_state.auth_manager = AuthManager()
+    
+    # Initialize health log data
+    if 'health_log_data' not in st.session_state:
+        import pandas as pd
+        st.session_state.health_log_data = pd.DataFrame()
 
 
 def check_session_validity():
-    """Check if current session is still valid"""
+    """Check if current session is still valid with comprehensive error handling"""
     if not st.session_state.authenticated:
         return False
     
-    # Check token expiry (basic check based on login time)
-    if st.session_state.login_time:
-        login_time = datetime.fromisoformat(st.session_state.login_time)
-        if datetime.now() - login_time > timedelta(hours=1):
-            logout_user()
-            return False
-    
-    # Verify token with backend (optional, can be expensive)
-    if st.session_state.access_token:
-        valid, _ = st.session_state.auth_manager.verify_token(st.session_state.access_token)
-        if not valid:
-            logout_user()
-            return False
-    
-    return True
+    try:
+        # Check token expiry (basic check based on login time)
+        if st.session_state.login_time:
+            login_time = datetime.fromisoformat(st.session_state.login_time)
+            if datetime.now() - login_time > timedelta(hours=1):
+                logout_user()
+                return False
+        
+        # Verify token with backend (with error handling)
+        if st.session_state.access_token:
+            try:
+                valid, _ = st.session_state.auth_manager.verify_token(st.session_state.access_token)
+                if not valid:
+                    logout_user()
+                    return False
+            except Exception as e:
+                # If token verification fails due to network issues, allow session to continue
+                # but log the error for debugging
+                print(f"Token verification failed: {e}")
+                # Only logout if it's clearly an authentication error
+                if "401" in str(e) or "403" in str(e):
+                    logout_user()
+                    return False
+        
+        return True
+        
+    except Exception as e:
+        # Handle any unexpected errors in session validation
+        print(f"Session validation error: {e}")
+        return False
 
 
 def logout_user():
@@ -195,47 +204,81 @@ def logout_user():
 
 def show_development_credentials():
     """Show database user info instead of test credentials"""
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### 📋 Database Users")
-    st.sidebar.info("Please use your existing database credentials to sign in.")
+    pass
 
 
 def render_login_page():
-    """Render a clean and professional login page"""
-    # Add custom CSS for login page styling
+    """Render a professional login page with modern design"""
+    # Professional login page styling
     st.markdown("""
     <style>
+    :root {
+        --primary-color: #059669;
+        --primary-dark: #047857;
+        --secondary-color: #f0fdf4;
+        --accent-color: #10b981;
+        --background-primary: #ffffff;
+        --background-secondary: #f7fef9;
+        --text-primary: #064e3b;
+        --text-secondary: #065f46;
+        --border-color: #d1fae5;
+        --shadow-sm: 0 1px 2px 0 rgb(5 150 105 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(5 150 105 / 0.1), 0 2px 4px -2px rgb(5 150 105 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(5 150 105 / 0.1), 0 4px 6px -4px rgb(5 150 105 / 0.1);
+        --border-radius-sm: 0.375rem;
+        --border-radius-md: 0.5rem;
+        --border-radius-lg: 0.75rem;
+        --border-radius-xl: 1rem;
+    }
     .login-container {
-        max-width: 400px;
-        margin: 2rem auto;
-        padding: 2rem;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        max-width: 450px;
+        margin: 3rem auto;
+        padding: 3rem 2.5rem;
+        background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%);
+        border-radius: var(--border-radius-lg);
+        box-shadow: var(--shadow-lg);
+        border: 1px solid var(--border-color);
     }
     .login-header {
         text-align: center;
-        margin-bottom: 2rem;
+        margin-bottom: 2.5rem;
     }
     .login-title {
-        font-size: 2rem;
-        color: #1a365d;
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
         font-weight: 700;
-        margin-bottom: 0.5rem;
+        margin-bottom: 0.75rem;
+        font-family: 'Inter', sans-serif;
     }
     .login-subtitle {
-        color: #64748b;
-        font-size: 1rem;
+        color: var(--text-secondary);
+        font-size: 1.1rem;
         margin-bottom: 0;
+        font-weight: 400;
     }
     .form-container {
-        margin-top: 1.5rem;
+        margin-top: 2rem;
     }
     .tab-container {
-        margin-bottom: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .welcome-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+        color: white;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 1rem;
     }
     </style>
     """, unsafe_allow_html=True)
+    
     
     # Center the login form
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -246,8 +289,8 @@ def render_login_page():
         # Header section
         st.markdown("""
         <div class="login-header">
-            <h1 class="login-title">🏥 Healthcare System</h1>
-            <p class="login-subtitle">Access your healthcare account</p>
+            <h1 class="login-title">💚 MyVitals</h1>
+            <p class="login-subtitle">Your Personal Health Companion</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -259,35 +302,44 @@ def render_login_page():
             with st.form("login_form", clear_on_submit=False):
                 st.markdown('<div class="form-container">', unsafe_allow_html=True)
                 
-                # Create HTML form with proper autocomplete attributes
+                # Disable autofill and clear any default values
                 st.markdown("""
                 <style>
-                .stTextInput > div > div > input[type="email"] {
-                    autocomplete: email;
+                /* Disable all autofill */
+                input:-webkit-autofill,
+                input:-webkit-autofill:hover, 
+                input:-webkit-autofill:focus, 
+                input:-webkit-autofill:active  {
+                    -webkit-box-shadow: 0 0 0 30px white inset !important;
                 }
-                .stTextInput > div > div > input[type="password"] {
-                    autocomplete: current-password;
+                /* Hide autofill icons */
+                input::-webkit-credentials-auto-fill-button {
+                    visibility: hidden;
+                    pointer-events: none;
+                    position: absolute;
+                    right: 0;
                 }
                 </style>
                 """, unsafe_allow_html=True)
                 
+                # Create form with autocomplete off and clear default values
                 email = st.text_input(
                     "Email Address",
-                    placeholder="Enter your email address",
+                    value="",  # Explicitly set to empty
                     help="Use your registered healthcare system email",
                     label_visibility="visible",
                     key="login_email",
-                    autocomplete="email"
+                    autocomplete="off"  # Disable autocomplete
                 )
                 
                 password = st.text_input(
                     "Password",
+                    value="",  # Explicitly set to empty
                     type="password",
-                    placeholder="Enter your password",
                     help="Your secure password",
                     label_visibility="visible",
                     key="login_password",
-                    autocomplete="current-password"
+                    autocomplete="new-password"  # Prevent autofill
                 )
                 
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -333,14 +385,12 @@ def render_login_page():
                 
                 full_name = st.text_input(
                     "Full Name",
-                    placeholder="Enter your full name",
                     help="Your complete name as it should appear in the system",
                     label_visibility="visible"
                 )
                 
                 signup_email = st.text_input(
                     "Email Address",
-                    placeholder="Enter your email address",
                     help="This will be your login email",
                     label_visibility="visible",
                     key="signup_email",
@@ -350,7 +400,6 @@ def render_login_page():
                 signup_password = st.text_input(
                     "Password",
                     type="password",
-                    placeholder="Create a secure password",
                     help="Must be at least 8 characters with uppercase, lowercase, and numbers",
                     label_visibility="visible",
                     key="signup_password",
@@ -360,7 +409,6 @@ def render_login_page():
                 confirm_password = st.text_input(
                     "Confirm Password",
                     type="password",
-                    placeholder="Confirm your password",
                     help="Re-enter your password to confirm",
                     label_visibility="visible",
                     key="confirm_password",
@@ -468,7 +516,7 @@ def render_user_info():
         if role == 'admin':
             st.sidebar.markdown("🛡️ **Administrator**")
         elif role == 'doctor':
-            st.sidebar.markdown("👨‍⚕️ **Healthcare Provider**")
+            st.sidebar.markdown("👨‍⚕️ **Medical Professional**")
         elif role == 'patient':
             st.sidebar.markdown("👤 **Patient**")
         

@@ -43,6 +43,7 @@ psutil>=5.9.0  # for memory monitoring during training
 
 # Utilities
 typing-extensions>=4.7.0
+rapidfuzz>=3.0.0
 
 # OCR and Image Processing for Prescription Analysis
 easyocr>=1.7.0

@@ -384,7 +384,56 @@ class MedicalReportAnalyzer:
         return list(set(risks))  # Remove duplicates
     
     def generate_recommendations(self, entities: Dict[str, List[MedicalEntity]]) -> List[str]:
-        """Generate personalized health recommendations"""
+        """Generate personalized health recommendations using comprehensive lifestyle engine"""
+        try:
+            # Import lifestyle engine
+            from ..utils.lifestyle_recommender import lifestyle_engine
+            
+            # Extract conditions and lab values
+            conditions = [entity.text for entity in entities['conditions']]
+            lab_values = [entity.text for entity in entities['lab_values']]
+            
+            # Generate comprehensive lifestyle plan
+            lifestyle_plan = lifestyle_engine.generate_comprehensive_plan(
+                conditions=conditions,
+                lab_values=lab_values
+            )
+            
+            # Compile all recommendations
+            recommendations = []
+            
+            # Add priority actions first
+            recommendations.extend(lifestyle_plan.priority_actions)
+            
+            # Add diet recommendations
+            for diet_rec in lifestyle_plan.diet_recommendations:
+                recommendations.append(f"Diet: Follow {diet_rec.category}")
+                recommendations.extend(diet_rec.nutritional_goals[:2])  # Top 2 goals
+            
+            # Add exercise recommendations
+            for exercise_rec in lifestyle_plan.exercise_recommendations:
+                recommendations.append(f"Exercise: {exercise_rec.recommended_activities[0]} - {exercise_rec.frequency}")
+                recommendations.extend(exercise_rec.precautions[:2])  # Top 2 precautions
+            
+            # Add lifestyle recommendations
+            for lifestyle_rec in lifestyle_plan.lifestyle_recommendations:
+                recommendations.extend(lifestyle_rec.recommendations[:2])  # Top 2 from each category
+            
+            # Add monitoring suggestions
+            recommendations.extend(lifestyle_plan.monitoring_suggestions[:3])  # Top 3 monitoring items
+            
+            # Add professional consultations
+            recommendations.extend([f"Consider consultation with: {consult}" for consult in lifestyle_plan.professional_consultations[:2]])
+            
+            return recommendations[:15]  # Limit to 15 recommendations to avoid overwhelming
+            
+        except Exception as e:
+            logger.warning(f"Error generating lifestyle recommendations: {e}")
+            # Fallback to basic recommendations
+            return self._generate_basic_recommendations(entities)
+    
+    def _generate_basic_recommendations(self, entities: Dict[str, List[MedicalEntity]]) -> List[str]:
+        """Fallback method for basic recommendations if lifestyle engine fails"""
         recommendations = []
         
         # Extract conditions for targeted recommendations

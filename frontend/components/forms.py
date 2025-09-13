@@ -8,8 +8,19 @@ class PatientInputForm:
     def render(self):
         """Render the enhanced patient input form with comprehensive health metrics"""
         
-        # Basic Information
-        st.markdown("### Personal Information")
+        # Professional Basic Information Section
+        st.markdown("""
+        <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                    margin-bottom: 2rem; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <h3 style="color: var(--primary-color); margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.75rem;">
+                <span style="background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); 
+                             color: white; padding: 0.5rem; border-radius: 50%; display: flex; 
+                             align-items: center; justify-content: center;">👤</span>
+                Personal Information
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
         col1, col2 = st.columns(2)
         
         with col1:
@@ -39,8 +50,19 @@ class PatientInputForm:
             hypertension = st.checkbox("History of Hypertension")
             kidney_disease = st.checkbox("History of Kidney Disease")
         
-        # Vital Signs
-        st.markdown("### Vital Signs")
+        # Professional Vital Signs Section
+        st.markdown("""
+        <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                    margin: 2rem 0; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <h3 style="color: var(--primary-color); margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.75rem;">
+                <span style="background: linear-gradient(135deg, var(--secondary-color), var(--accent-color)); 
+                             color: white; padding: 0.5rem; border-radius: 50%; display: flex; 
+                             align-items: center; justify-content: center;">💓</span>
+                Vital Signs
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
         col3, col4 = st.columns(2)
         
         with col3:
@@ -66,8 +88,19 @@ class PatientInputForm:
             triglycerides = st.number_input("Triglycerides (mg/dL)", 
                                           min_value=30, max_value=1000, value=150)
         
-        # Blood Sugar and Additional Metrics
-        st.markdown("### Blood Work")
+        # Professional Blood Work Section
+        st.markdown("""
+        <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                    margin: 2rem 0; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <h3 style="color: var(--primary-color); margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.75rem;">
+                <span style="background: linear-gradient(135deg, #dc2626, #ef4444); 
+                             color: white; padding: 0.5rem; border-radius: 50%; display: flex; 
+                             align-items: center; justify-content: center;">🩸</span>
+                Blood Work & Laboratory Results
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
         col5, col6 = st.columns(2)
         
         with col5:
@@ -85,8 +118,19 @@ class PatientInputForm:
             oldpeak = st.number_input("ST Depression (Oldpeak)", 
                                     min_value=0.0, max_value=10.0, value=1.0, step=0.1)
         
-        # Lifestyle Factors
-        st.markdown("### Lifestyle Factors")
+        # Professional Lifestyle Section
+        st.markdown("""
+        <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                    margin: 2rem 0; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <h3 style="color: var(--primary-color); margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.75rem;">
+                <span style="background: linear-gradient(135deg, #059669, #10b981); 
+                             color: white; padding: 0.5rem; border-radius: 50%; display: flex; 
+                             align-items: center; justify-content: center;">🏃</span>
+                Lifestyle Factors
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
         col7, col8 = st.columns(2)
         
         with col7:
@@ -102,8 +146,19 @@ class PatientInputForm:
             
             on_meds = st.checkbox("Currently on Medications")
         
-        # Categorical Clinical Data
-        st.markdown("### Clinical Assessment")
+        # Professional Clinical Assessment Section
+        st.markdown("""
+        <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                    margin: 2rem 0; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+            <h3 style="color: var(--primary-color); margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.75rem;">
+                <span style="background: linear-gradient(135deg, #7c3aed, #a855f7); 
+                             color: white; padding: 0.5rem; border-radius: 50%; display: flex; 
+                             align-items: center; justify-content: center;">🔬</span>
+                Clinical Assessment
+            </h3>
+        </div>
+        """, unsafe_allow_html=True)
+        
         col9, col10 = st.columns(2)
         
         with col9:

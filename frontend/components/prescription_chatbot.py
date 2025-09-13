@@ -14,7 +14,7 @@ from PIL import Image
 import io
 
 class PrescriptionChatbot:
-    def __init__(self, api_base_url: str = "http://localhost:8000/api"):
+    def __init__(self, api_base_url: str = "http://localhost:8002/api"):
         self.api_base_url = api_base_url
         self.prescription_endpoint = f"{api_base_url}/prescription"
         self.chat_endpoint = f"{api_base_url}/chat"
@@ -77,11 +77,18 @@ def render_prescription_chatbot():
     if 'prescription_messages' not in st.session_state:
         st.session_state.prescription_messages = []
     
-    # Professional header
+    # Professional header with updated styling
     st.markdown("""
-    <div style='background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 15px; margin-bottom: 2rem; color: white; text-align: center;'>
-        <h1 style='margin: 0; font-size: 2.5rem; font-weight: 300;'>🩺 AI Prescription Analyst</h1>
-        <p style='margin: 0.5rem 0 0 0; font-size: 1.2rem; opacity: 0.9;'>Professional Medical Document Analysis & Recommendations</p>
+    <div style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%); 
+                padding: 2.5rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                color: white; text-align: center; box-shadow: var(--shadow-lg);">
+        <div style="background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 50%; 
+                    display: inline-flex; align-items: center; justify-content: center; 
+                    font-size: 2.5rem; margin-bottom: 1rem;">🩺</div>
+        <h1 style="margin: 0; font-size: 2.5rem; font-weight: 700;">AI Prescription Analyst</h1>
+        <p style="margin: 0.75rem 0 0 0; font-size: 1.2rem; opacity: 0.95; line-height: 1.4;">
+            Professional Medical Document Analysis & AI-Powered Recommendations
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -99,14 +106,33 @@ def render_prescription_chatbot():
 
 def render_prescription_upload():
     """Render prescription upload interface"""
-    st.markdown("### 📤 Upload Your Prescription")
-    st.markdown("Upload a clear image of your prescription for AI-powered analysis and professional medical recommendations.")
-    
-    # Upload area with professional styling
     st.markdown("""
-    <div style='border: 2px dashed #4CAF50; border-radius: 10px; padding: 2rem; text-align: center; background: #f8fff8; margin: 1rem 0;'>
-        <h4 style='color: #2E7D32; margin-bottom: 1rem;'>📸 Prescription Upload</h4>
-        <p style='color: #666; margin: 0;'>Supported formats: JPG, PNG, BMP, TIFF, PDF • Max size: 10MB</p>
+    <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                margin-bottom: 2rem; border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+        <h3 style="color: var(--primary-color); margin: 0 0 1rem 0; display: flex; align-items: center; gap: 0.75rem;">
+            <span style="background: linear-gradient(135deg, var(--accent-color), var(--secondary-color)); 
+                         color: white; padding: 0.5rem; border-radius: 50%; display: flex; 
+                         align-items: center; justify-content: center;">📤</span>
+            Upload Your Prescription
+        </h3>
+        <p style="color: var(--text-secondary); margin: 0; line-height: 1.6;">
+            Upload a clear image of your prescription for AI-powered analysis and professional medical recommendations.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Professional upload area
+    st.markdown("""
+    <div style="border: 2px dashed var(--accent-color); border-radius: var(--border-radius-lg); 
+                padding: 3rem; text-align: center; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); 
+                margin: 2rem 0; transition: all 0.3s ease;">
+        <div style="background: var(--accent-color); color: white; padding: 1rem; border-radius: 50%; 
+                    display: inline-flex; align-items: center; justify-content: center; 
+                    font-size: 2rem; margin-bottom: 1rem;">📸</div>
+        <h4 style="color: var(--primary-color); margin-bottom: 1rem; font-size: 1.25rem;">Prescription Upload Zone</h4>
+        <p style="color: var(--text-secondary); margin: 0; font-size: 1rem;">
+            Supported formats: JPG, PNG, BMP, TIFF, PDF • Maximum size: 10MB
+        </p>
     </div>
     """, unsafe_allow_html=True)
     
@@ -433,13 +459,13 @@ def generate_prescription_response(question):
 I'd be happy to help with your prescription questions! However, I don't see any recent prescription analysis. Please upload your prescription first so I can provide specific guidance about your medications.
 
 **📋 General Medical Guidance:**
-• **Medication Adherence:** Always take medications exactly as prescribed by your healthcare provider
+• **Medication Adherence:** Always take medications exactly as prescribed by your doctor
 • **Dosage Timing:** Don't skip doses or stop medications without consulting your doctor
-• **Side Effect Monitoring:** Report any unusual symptoms immediately to your healthcare provider
+• **Side Effect Monitoring:** Report any unusual symptoms immediately to your doctor
 • **Safe Storage:** Keep medications in original containers, away from children and pets
 • **Expiration Dates:** Check and dispose of expired medications properly
 
-**⚠️ Important:** For specific medication questions, always consult your healthcare provider or pharmacist."""
+**⚠️ Important:** For specific medication questions, always consult your doctor or pharmacist."""
     
     # Extract context from last analysis
     medicines = last_analysis.get('identified_medicines', [])
@@ -466,7 +492,7 @@ I'd be happy to help with your prescription questions! However, I don't see any 
 • **Cardiovascular:** Chest pain, severe dizziness, fainting, irregular heartbeat
 • **Neurological:** Severe confusion, seizures, severe headache
 
-**📞 When to Contact Your Healthcare Provider:**
+**📞 When to Contact Your Doctor:**
 • Any side effect that interferes with daily activities
 • Side effects that worsen over time
 • New symptoms after starting medication
@@ -478,7 +504,7 @@ I'd be happy to help with your prescription questions! However, I don't see any 
 • Stay hydrated and maintain regular sleep schedule
 • Don't stop medications abruptly without medical consultation
 
-**⚕️ Medical Disclaimer:** This information is for educational purposes only. Always consult your healthcare provider for personalized medical advice about your specific medications and health condition."""
+**⚕️ Medical Disclaimer:** This information is for educational purposes only. Always consult your doctor for personalized medical advice about your specific medications and health condition."""
     
     elif 'interaction' in question_lower:
         return f"""**🩺 Drug Interaction Analysis for Your Medications:**
@@ -488,7 +514,7 @@ I'd be happy to help with your prescription questions! However, I don't see any 
 **⚠️ Important Drug Interaction Precautions:**
 
 **🏥 Healthcare Communication:**
-• **Complete Medication List:** Inform ALL healthcare providers about every medication, supplement, and herbal product you take
+• **Complete Medication List:** Inform ALL doctors about every medication, supplement, and herbal product you take
 • **Pharmacy Records:** Use one primary pharmacy to maintain complete medication records
 • **Medical History:** Always mention allergies and previous adverse reactions
 
@@ -516,7 +542,7 @@ I'd be happy to help with your prescription questions! However, I don't see any 
 • Unexpected symptoms or feeling unwell
 • Changes in how you normally feel on your medications
 
-**⚕️ Professional Recommendation:** Always consult your pharmacist or healthcare provider before adding any new medications, supplements, or making changes to your current regimen. They can perform comprehensive interaction checks specific to your medication profile."""
+**⚕️ Professional Recommendation:** Always consult your pharmacist or doctor before adding any new medications, supplements, or making changes to your current regimen. They can perform comprehensive interaction checks specific to your medication profile."""
     
     elif 'how to take' in question_lower or 'dosage' in question_lower:
         dosage_details = ""
@@ -545,7 +571,7 @@ I'd be happy to help with your prescription questions! However, I don't see any 
 • **Soon After:** Take as soon as you remember if it's within a few hours
 • **Close to Next Dose:** Skip missed dose if it's almost time for the next one
 • **Never Double:** Don't take two doses at once to make up for missed dose
-• **Frequent Misses:** Contact healthcare provider if you often forget doses
+• **Frequent Misses:** Contact your doctor if you often forget doses
 
 **📱 Medication Management Tips:**
 • **Pill Organizer:** Weekly organizers help track daily medications
@@ -553,13 +579,13 @@ I'd be happy to help with your prescription questions! However, I don't see any 
 • **Routine Integration:** Link medication times to daily activities (meals, bedtime)
 • **Travel Planning:** Bring extra medication when traveling
 
-**🚨 When to Contact Your Healthcare Provider:**
+**🚨 When to Contact Your Doctor:**
 • Difficulty swallowing pills or keeping medication down
 • Frequent missed doses affecting treatment
 • Questions about timing with other medications
 • Side effects that interfere with taking medication
 
-**⚕️ Important:** These are general guidelines. Always follow the specific instructions provided by your healthcare provider and pharmacist for your individual medications."""
+**⚕️ Important:** These are general guidelines. Always follow the specific instructions provided by your doctor and pharmacist for your individual medications."""
     
     else:
         return f"""**🩺 Comprehensive Medication Guidance:**
@@ -582,16 +608,16 @@ I'd be happy to help with your prescription questions! However, I don't see any 
 **3. 📊 Health Monitoring**
 • Track both positive effects and any side effects
 • Monitor symptoms your medication is treating
-• Keep a medication diary for healthcare provider visits
+• Keep a medication diary for doctor visits
 • Note any changes in how you feel
 
 **4. 💬 Healthcare Communication**
-• Inform all healthcare providers about current medications
+• Inform all doctors about current medications
 • Report side effects promptly to your prescribing doctor
 • Ask questions during pharmacy visits
 • Keep an updated medication list in your wallet/phone
 
-**📞 When to Contact Healthcare Providers:**
+**📞 When to Contact Medical Professionals:**
 
 **🏥 Your Prescribing Doctor:**
 • Medical concerns or worsening symptoms
@@ -618,7 +644,7 @@ I'd be happy to help with your prescription questions! However, I don't see any 
 • Dispose of unused medications safely
 • Bring medication list to all medical appointments
 
-**⚕️ Medical Disclaimer:** This AI guidance is for educational purposes only and does not replace professional medical advice. Always consult your healthcare provider or pharmacist for personalized medical guidance regarding your specific medications and health conditions."""
+**⚕️ Medical Disclaimer:** This AI guidance is for educational purposes only and does not replace professional medical advice. Always consult your doctor or pharmacist for personalized medical guidance regarding your specific medications and health conditions."""
 
 def add_prescription_to_chat(analysis_result):
     """Add enhanced prescription analysis to chat history"""

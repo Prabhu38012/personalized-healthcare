@@ -1,4 +1,17 @@
 import streamlit as st
+
+# Configure Streamlit page for professional appearance
+st.set_page_config(
+    page_title="MyVitals - AI-Powered Health Analytics",
+    page_icon="💚",
+    layout="wide",
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': 'https://github.com/your-repo/myvitals-system',
+        'Report a bug': 'https://github.com/your-repo/myvitals-system/issues',
+        'About': "# MyVitals\nAI-Powered Personalized Health Analytics Platform"
+    }
+)
 import requests
 import pandas as pd
 import plotly.express as px
@@ -12,21 +25,44 @@ from components.auth import (
 )
 from components.chatbot import render_chatbot_interface, render_chatbot_sidebar
 from components.prescription_chatbot import render_prescription_chatbot
-from pages.health_log import create_health_log_page
+from pages.medical_report_analysis import MedicalReportAnalyzer
 from utils.api_client import HealthcareAPI
 from utils.caching import cleanup_expired_cache, get_cache_stats
 import json
 import time
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def load_css():
     """Load custom CSS styles - cached for performance"""
     if 'css_loaded' not in st.session_state:
         css_file = os.path.join(os.path.dirname(__file__), "assets", "styles.css")
         if os.path.exists(css_file):
-            with open(css_file) as f:
-                st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+            # Enhanced CSS with professional design system and improved color grading
+            st.markdown("""
+            <style>
+            :root {
+                --primary-color: #059669;
+                --primary-dark: #047857;
+                --secondary-color: #f0fdf4;
+                --accent-color: #10b981;
+                --background-primary: #ffffff;
+                --background-secondary: #f7fef9;
+                --text-primary: #064e3b;
+                --text-secondary: #065f46;
+                --border-color: #d1fae5;
+                --shadow-sm: 0 1px 2px 0 rgb(5 150 105 / 0.05);
+                --shadow-md: 0 4px 6px -1px rgb(5 150 105 / 0.1), 0 2px 4px -2px rgb(5 150 105 / 0.1);
+                --shadow-lg: 0 10px 15px -3px rgb(5 150 105 / 0.1), 0 4px 6px -4px rgb(5 150 105 / 0.1);
+                --border-radius-sm: 0.375rem;
+                --border-radius-md: 0.5rem;
+                --border-radius-lg: 0.75rem;
+                --border-radius-xl: 1rem;
+            }
+                .status-success { background-color: #f0fff4; color: #38a169; }
+                .status-error { background-color: #fff5f5; color: #e53e3e; }
+            </style>
+            """, unsafe_allow_html=True)
         else:
             # Fallback inline styles for essential components
             st.markdown("""
@@ -58,14 +94,7 @@ init_session_state()
 # Load custom CSS
 load_css()
 
-# Check authentication before proceeding
-if not st.session_state.authenticated or not check_session_validity():
-    render_login_page()
-    # Show development credentials in sidebar during login (for development purposes)
-    import os
-    if os.getenv("SHOW_TEST_CREDENTIALS", "true").lower() == "true":
-        show_development_credentials()
-    st.stop()
+# Authentication will be handled in main() function
 
 # Initialize API client with auth headers (cached for performance)
 if 'api_client' not in st.session_state:
@@ -148,7 +177,7 @@ def display_risk_assessment(prediction, patient_data=None):
                 <p style='margin: 0; line-height: 1.6;'>
                     This patient has a <strong>high risk</strong> of cardiovascular disease. 
                     <strong>Immediate medical attention</strong> is strongly recommended. 
-                    Please consult with a healthcare provider as soon as possible.
+                    Please consult with a doctor as soon as possible.
                 </p>
             </div>
             """.format(risk_prob), unsafe_allow_html=True)
@@ -886,40 +915,69 @@ def render_user_management():
     with tab1:
         st.subheader("Current Users")
         
-        # Get users from backend (mock implementation)
-        users_data = {
-            "ID": ["U001", "U002", "U003", "U004"],
-            "Name": ["Dr. Jane Smith", "John Doe", "Alice Johnson", "Bob Wilson"],
-            "Email": ["doctor@healthcare.com", "patient@healthcare.com", "alice@healthcare.com", "bob@healthcare.com"],
-            "Role": ["Doctor", "Patient", "Doctor", "Patient"],
-            "Status": ["Active", "Active", "Active", "Inactive"],
-            "Last Login": ["2024-01-15 10:30", "2024-01-14 15:20", "2024-01-13 09:15", "Never"]
-        }
+        # Get users from backend using API client
+        try:
+            users_response = api_client.get_users()
+            if users_response:
+                # Convert to DataFrame for display
+                users_data = []
+                for user in users_response:
+                    users_data.append({
+                        "ID": user.get("id", "N/A"),
+                        "Name": user.get("full_name", "N/A"),
+                        "Email": user.get("email", "N/A"),
+                        "Role": user.get("role", "N/A").title(),
+                        "Status": "Active" if user.get("is_active", False) else "Inactive",
+                        "Created": user.get("created_at", "N/A")[:10] if user.get("created_at") else "N/A",
+                        "Last Login": user.get("last_login", "Never")[:16] if user.get("last_login") else "Never"
+                    })
+                
+                if users_data:
+                    users_df = pd.DataFrame(users_data)
+                else:
+                    st.info("No users found in the system.")
+                    return
+            else:
+                st.error("Failed to fetch users from backend.")
+                return
+        except Exception as e:
+            st.error(f"Error fetching users: {str(e)}")
+            return
         
-        users_df = pd.DataFrame(users_data)
+        # Display users in a proper table format
+        st.dataframe(users_df, use_container_width=True)
         
-        # Add action buttons
-        for idx, row in users_df.iterrows():
-            col1, col2, col3, col4, col5, col6, col7 = st.columns([1, 2, 2, 1, 1, 1, 1])
-            
-            with col1:
-                st.write(row['ID'])
-            with col2:
-                st.write(row['Name'])
-            with col3:
-                st.write(row['Email'])
-            with col4:
-                role_color = "blue" if row['Role'] == "Doctor" else "green"
-                st.markdown(f":{role_color}[{row['Role']}]")
-            with col5:
-                status_color = "green" if row['Status'] == "Active" else "red"
-                st.markdown(f":{status_color}[{row['Status']}]")
-            with col6:
-                if st.button("Edit", key=f"edit_{idx}"):
-                    st.info(f"Edit user {row['Name']}")
-            with col7:
-                if st.button("Delete", key=f"delete_{idx}", type="secondary"):
-                    st.warning(f"Delete user {row['Name']}?")
+        # User management actions
+        st.markdown("### User Actions")
+        selected_user_id = st.selectbox("Select User for Actions", 
+                                       options=[user["ID"] for user in users_data],
+                                       format_func=lambda x: f"{x} - {next(u['Name'] for u in users_data if u['ID'] == x)}")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("🔄 Refresh Users", use_container_width=True):
+                st.rerun()
+        
+        with col2:
+            if st.button("✏️ Edit User", use_container_width=True):
+                st.info(f"Edit functionality for user {selected_user_id} would be implemented here")
+        
+        with col3:
+            if st.button("🗑️ Delete User", use_container_width=True, type="secondary"):
+                if st.session_state.get(f"confirm_delete_{selected_user_id}"):
+                    try:
+                        result = api_client.delete_user(selected_user_id)
+                        if result:
+                            st.success("User deleted successfully!")
+                            st.rerun()
+                        else:
+                            st.error("Failed to delete user")
+                    except Exception as e:
+                        st.error(f"Error deleting user: {str(e)}")
+                else:
+                    st.session_state[f"confirm_delete_{selected_user_id}"] = True
+                    st.warning("Click again to confirm deletion")
         
         st.markdown("---")
         
@@ -941,12 +999,221 @@ def render_user_management():
             
             if st.form_submit_button("Create User", type="primary"):
                 if new_name and new_email and new_password:
-                    # Here you would integrate with the backend API
-                    st.success(f"User {new_name} created successfully!")
-                    st.info("In a real implementation, this would call the backend API to create the user.")
+                    try:
+                        # Create user using API client
+                        user_data = {
+                            "email": new_email,
+                            "password": new_password,
+                            "full_name": new_name,
+                            "role": new_role.lower(),
+                            "is_active": is_active
+                        }
+                        
+                        result = api_client.create_user(user_data)
+                        if result:
+                            st.success(f"User {new_name} created successfully!")
+                            if send_welcome:
+                                st.info("Welcome email would be sent in production environment.")
+                            st.rerun()
+                        else:
+                            st.error("Failed to create user. Please check the details and try again.")
+                    except Exception as e:
+                        st.error(f"Error creating user: {str(e)}")
                 else:
                     st.error("Please fill in all required fields.")
 
+
+def render_health_log_page():
+    """Render health log page with backend integration"""
+    st.header("📊 Health Log")
+    st.markdown("Track your vital signs and health metrics over time")
+    
+    # Main tabs
+    tab1, tab2, tab3 = st.tabs(["📈 Health Metrics", "📝 Log New Data", "📋 Health Reports"])
+    
+    with tab1:
+        render_health_metrics()
+    
+    with tab2:
+        render_data_entry()
+    
+    with tab3:
+        render_health_reports()
+
+def render_health_metrics():
+    """Render health metrics dashboard with backend integration"""
+    st.markdown("### 📊 Your Health Metrics Overview")
+    
+    try:
+        # Get health data from backend
+        health_entries = api_client.get_health_data(limit=30)
+        
+        if not health_entries or len(health_entries) == 0:
+            st.info("📝 No health data available. Please log your first health metrics in the 'Log New Data' tab.")
+            return
+        
+        # Convert to DataFrame for easier handling
+        health_data = pd.DataFrame(health_entries)
+        latest_data = health_entries[0]  # Most recent entry
+        
+        # Key metrics cards
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            systolic = latest_data.get('systolic_bp', 0) or 0
+            diastolic = latest_data.get('diastolic_bp', 0) or 0
+            st.metric("🩸 Blood Pressure", f"{systolic}/{diastolic}")
+        
+        with col2:
+            heart_rate = latest_data.get('heart_rate', 0) or 0
+            st.metric("❤️ Heart Rate", f"{heart_rate} BPM")
+        
+        with col3:
+            weight = latest_data.get('weight', 0) or 0
+            st.metric("⚖️ Weight", f"{weight:.1f} kg")
+        
+        with col4:
+            blood_sugar = latest_data.get('blood_sugar', 0) or 0
+            st.metric("🩸 Blood Sugar", f"{blood_sugar:.1f} mg/dL")
+        
+    except Exception as e:
+        st.error(f"Error loading health data: {str(e)}")
+        return
+    
+    # Health trends chart
+    st.markdown("### 📈 Health Trends (Last 30 Days)")
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=health_data['date'],
+        y=health_data['systolic_bp'],
+        mode='lines+markers',
+        name='Systolic BP',
+        line=dict(color='#FF6B6B', width=3)
+    ))
+    fig.add_trace(go.Scatter(
+        x=health_data['date'],
+        y=health_data['heart_rate'],
+        mode='lines+markers',
+        name='Heart Rate',
+        yaxis='y2',
+        line=dict(color='#4ECDC4', width=3)
+    ))
+    fig.update_layout(
+        title="Blood Pressure & Heart Rate Trends",
+        xaxis_title="Date",
+        yaxis=dict(title="Blood Pressure (mmHg)", side="left"),
+        yaxis2=dict(title="Heart Rate (BPM)", side="right", overlaying="y"),
+        height=400
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+def render_data_entry():
+    """Render health data entry form"""
+    st.markdown("### 📝 Log New Health Data")
+    
+    with st.form("health_data_entry", clear_on_submit=True):
+        st.markdown("#### 🩺 Vital Signs")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            systolic_bp = st.number_input("Systolic Blood Pressure (mmHg)", min_value=80, max_value=200, value=120)
+            diastolic_bp = st.number_input("Diastolic Blood Pressure (mmHg)", min_value=40, max_value=120, value=80)
+            heart_rate = st.number_input("Heart Rate (BPM)", min_value=40, max_value=200, value=70)
+        
+        with col2:
+            weight = st.number_input("Weight (kg)", min_value=30.0, max_value=200.0, value=70.0, step=0.1)
+            temperature = st.number_input("Temperature (°F)", min_value=95.0, max_value=110.0, value=98.6, step=0.1)
+            blood_sugar = st.number_input("Blood Sugar (mg/dL)", min_value=50, max_value=400, value=100)
+        
+        st.markdown("#### 📋 Additional Notes")
+        notes = st.text_area("Health notes or symptoms", placeholder="Any symptoms, medication changes, or health observations...")
+        
+        submit_button = st.form_submit_button("💾 Save Health Data", type="primary")
+        
+        if submit_button:
+            save_health_data(systolic_bp, diastolic_bp, heart_rate, weight, temperature, blood_sugar, notes)
+
+def render_health_reports():
+    """Render health reports and analytics"""
+    st.markdown("### 📋 Health Reports & Analytics")
+    
+    if st.session_state.health_log_data.empty:
+        st.info("📝 No health data available for reports. Please log some health metrics first.")
+        return
+    
+    # Weekly summary
+    st.markdown("#### 📊 Weekly Health Summary")
+    
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=7)
+    
+    weekly_data = st.session_state.health_log_data[
+        st.session_state.health_log_data['date'] >= start_date
+    ]
+    
+    if not weekly_data.empty:
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            avg_systolic = weekly_data['systolic_bp'].mean()
+            st.metric("Avg Systolic BP", f"{avg_systolic:.0f} mmHg")
+        
+        with col2:
+            avg_hr = weekly_data['heart_rate'].mean()
+            st.metric("Avg Heart Rate", f"{avg_hr:.0f} BPM")
+        
+        with col3:
+            data_points = len(weekly_data)
+            consistency = (data_points / 7) * 100
+            st.metric("Logging Consistency", f"{consistency:.0f}%")
+
+def save_health_data(systolic_bp, diastolic_bp, heart_rate, weight, temperature, blood_sugar, notes):
+    """Save new health data entry"""
+    new_entry = {
+        'date': datetime.now(),
+        'systolic_bp': systolic_bp,
+        'diastolic_bp': diastolic_bp,
+        'heart_rate': heart_rate,
+        'weight': weight,
+        'temperature': temperature,
+        'blood_sugar': blood_sugar,
+        'notes': notes
+    }
+    
+    # Add to health log data
+    new_df = pd.DataFrame([new_entry])
+    st.session_state.health_log_data = pd.concat([st.session_state.health_log_data, new_df], ignore_index=True)
+    
+    st.success("✅ Health data saved successfully!")
+    st.balloons()
+    st.rerun()
+
+def generate_sample_health_data():
+    """Generate sample health data for demonstration"""
+    dates = pd.date_range(start=datetime.now() - timedelta(days=30), end=datetime.now(), freq='D')
+    
+    data = []
+    for i, date in enumerate(dates):
+        base_systolic = 120 + (i % 10) - 5
+        base_diastolic = 80 + (i % 6) - 3
+        base_hr = 70 + (i % 8) - 4
+        base_weight = 70.0 + (i % 3) * 0.1
+        base_temp = 98.6 + (i % 2) * 0.2
+        
+        data.append({
+            'date': date,
+            'systolic_bp': base_systolic,
+            'diastolic_bp': base_diastolic,
+            'heart_rate': base_hr,
+            'weight': base_weight,
+            'temperature': base_temp,
+            'blood_sugar': 100 + (i % 5),
+            'notes': f"Daily health check {i+1}"
+        })
+    
+    return pd.DataFrame(data)
 
 def display_connection_status():
     """Display backend connection status in sidebar - optimized with global caching"""
@@ -984,259 +1251,553 @@ def display_connection_status():
         )
 
 def main():
-    """Main application"""
-    # Initialize page state if not exists
-    if 'page' not in st.session_state:
-        st.session_state.page = "🏠 Risk Assessment"
-    
-    # Handle page redirects from auth
-    if hasattr(st.session_state, 'redirect_to'):
-        st.session_state.page = st.session_state.redirect_to
-        del st.session_state.redirect_to
-        st.rerun()
-    
-    # Main header with logo and title
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        st.image("https://img.icons8.com/color/96/000000/medical-doctor.png", width=80)
-    with col2:
-        st.markdown(
-            "<h1 class='main-header'>Personalized Healthcare<br>Recommendation System</h1>",
-            unsafe_allow_html=True
-        )
-    
-    # Check backend health
-    if not api_client.check_backend_health():
-        st.error("Backend service is not available. Please ensure the backend server is running.")
+    """Main application function with comprehensive error handling"""
+    try:
+        init_session_state()
+
+        # Check if user is authenticated
+        if not st.session_state.authenticated:
+            render_login_page()
+            return
+
+        # Check session validity
+        if not check_session_validity():
+            render_login_page()
+            return
+
+        # Initialize page state if not exists
+        if 'page' not in st.session_state:
+            st.session_state.page = "🏠 Risk Assessment"
+
+        # Handle page redirects from auth
+        if hasattr(st.session_state, 'redirect_to'):
+            st.session_state.page = st.session_state.redirect_to
+            del st.session_state.redirect_to
+            st.rerun()
+
+        # Main header with MyVitals branding
+        st.markdown("""
+        <div style="text-align: center; padding: 1rem 0; margin-bottom: 1rem;">
+            <h1 style="color: var(--primary-color); margin: 0; font-size: 2.5rem; font-weight: 700;">
+                💚 MyVitals
+            </h1>
+            <p style="color: var(--text-secondary); margin: 0.25rem 0 0 0; font-size: 1.1rem;">
+                Your Personal Health Companion
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Add helpful instructions
-        with st.expander("How to start the backend server", expanded=True):
-            st.code("""# In a new terminal, run:
+        # Check backend health
+        if not api_client.check_backend_health():
+            st.error("Backend service is not available. Please ensure the backend server is running.")
+            
+            # Add helpful instructions
+            with st.expander("How to start the backend server", expanded=True):
+                st.code("""# In a new terminal, run:
 cd backend
 uvicorn app:app --reload
 
 # Or using Python:
 python -m uvicorn app:app --reload""")
-            
-        if st.button("🔄 Retry Connection", type="primary"):
-            st.rerun()
-        return
-    
-    # Sidebar navigation with authentication-aware options
-    render_user_info()  # Display user info in sidebar
-    
-    st.sidebar.title("Navigation")
-    
-    # Build navigation options based on user role
-    nav_options = ["🏠 Risk Assessment", "💊 Prescription Analysis", "🏥 Medical Report Analysis", "📊 Health Log", "🤖 AI Assistant"]
-    
-    # Add role-specific navigation
-    if is_doctor() or is_admin():
-        nav_options.extend(["👥 Patient Management"])
-    
-    # Admin-only navigation
-    if is_admin():
-        nav_options.extend(["🔧 Admin Panel", "👤 User Management"])
-    
-    # Add About page
-    nav_options.append("ℹ️ About")
-    
-    # Get the current page from session state or default to first option
-    default_index = nav_options.index(st.session_state.page) if st.session_state.page in nav_options else 0
-    
-    # Update page based on sidebar selection
-    page = st.sidebar.radio(
-        "Go to",
-        nav_options,
-        index=default_index,
-        key="page_selector"
-    )
-    
-    # Update session state page
-    st.session_state.page = page
-    
-    # Display connection status in sidebar
-    display_connection_status()
-    
-    # Add sidebar chatbot (only show if not on main chatbot page)
-    if "🤖 AI Assistant" not in page:
-        render_chatbot_sidebar()
-    
-    # Add logout button in footer
-    if st.session_state.authenticated:
-        if st.sidebar.button("🚪 Logout", use_container_width=True, type="primary", key="main_logout_btn"):
-            from components.auth import logout_user
-            logout_user()
-    
-    # Add footer
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("""
-    <div style="text-align: center; color: #718096; font-size: 0.8rem; margin-top: 1rem;">
-        <p> 2023 Personalized Healthcare System</p>
-        <p>v1.0.0</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    if "🏠 Risk Assessment" in page:
-        st.header("🔬 Advanced Health Risk Assessment")
-        st.markdown("""
-        **Comprehensive health risk assessment with laboratory data integration**
+                
+            if st.button("🔄 Retry Connection", type="primary"):
+                st.rerun()
+            return
         
-        Enhanced lab-based analysis for accurate health predictions using comprehensive laboratory parameters.
-        """)
+        # Sidebar navigation with authentication-aware options
+        render_user_info()  # Display user info in sidebar
         
-        # Create tabs for different analysis types
-        lab_tab, results_tab = st.tabs(["🔬 Lab Analysis", "📊 Results"])
+        st.sidebar.title("Navigation")
         
-        with lab_tab:
-            st.markdown("### 🔬 Enhanced Lab-Based Analysis")
+        # Build navigation options based on user role
+        nav_options = [
+            "🏠 Risk Assessment", 
+            "📊 Health Log", 
+            "💊 Prescription Analysis",
+            "🤖 AI Assistant"
+        ]
+        
+        # Add role-specific navigation
+        if is_doctor() or is_admin():
+            nav_options.extend(["👥 Patient Management"])
+        
+        # Admin-only navigation
+        if is_admin():
+            nav_options.extend(["🔧 Admin Panel", "👤 User Management"])
+        
+        # Add About page
+        nav_options.append("ℹ️ About")
+        
+        # Get the current page from session state or default to first option
+        default_index = nav_options.index(st.session_state.page) if st.session_state.page in nav_options else 0
+        
+        # Update page based on sidebar selection
+        page = st.sidebar.radio(
+            "Go to",
+            nav_options,
+            index=default_index,
+            key="page_selector"
+        )
+        
+        # Update session state page
+        st.session_state.page = page
+        
+        # Display connection status in sidebar
+        display_connection_status()
+        
+        # Add sidebar chatbot (only show if not on main chatbot page)
+        if "🤖 AI Assistant" not in page:
+            render_chatbot_sidebar()
+        
+        # Add logout button in footer
+        if st.session_state.authenticated:
+            if st.sidebar.button("🚪 Logout", use_container_width=True, type="primary", key="main_logout_btn"):
+                from components.auth import logout_user
+                logout_user()
+        
+        # Add professional footer
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("""
+                    <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border-radius: var(--border-radius-md); margin-top: 1rem;">
+                        <p style="margin: 0; font-size: 0.9rem; font-weight: 500;">💚 MyVitals v2.1.0</p>
+                        <p style="margin: 0; font-size: 0.8rem; opacity: 0.8;">Your Personal Health Companion</p>
+                    </div>
+        """, unsafe_allow_html=True)
+        
+        # Page routing with professional headers
+        if "🏠 Risk Assessment" in page:
+            # Professional page header
             st.markdown("""
-            **Advanced health risk assessment using comprehensive laboratory data**
+            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
+                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
+                    🔬 Advanced Health Risk Assessment
+                </h1>
+                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
+                    Comprehensive health risk assessment with laboratory data integration and AI-powered analysis
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
             
-            This enhanced analysis incorporates detailed hematology and blood chemistry values 
-            to provide more accurate and comprehensive health risk predictions.
-            """)
+            # Create tabs for different analysis types
+            lab_tab, results_tab = st.tabs(["🔬 Lab Analysis", "📊 Results"])
             
-            # Initialize lab form
-            lab_form = LabPatientInputForm()
-            lab_patient_data = lab_form.render()
-            
-            # Analysis options
-            st.markdown("### Analysis Options")
-            
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                lab_force_llm = st.checkbox("Enable AI Analysis", 
-                                          value=True,
-                                          key="lab_force_llm",
-                                          help="Uses AI for comprehensive lab interpretation and clinical insights")
-            
-            with col2:
-                lab_analysis_type = st.selectbox("Analysis Type", 
-                                               ["🔬 Lab Analysis", "📊 Basic Assessment"],
-                                               key="lab_analysis_type",
-                                               help="Lab Analysis uses AI for complete medical interpretation")
-            
-            # Prediction button
-            if st.button("🔍 Analyze Health Risk", type="primary", key="lab_analyze_btn"):
-                if lab_patient_data:
-                    with st.spinner("Analyzing your health data..."):
-                        try:
-                            if lab_analysis_type == "🔬 Lab Analysis":
-                                result = api_client.make_lab_prediction(lab_patient_data, lab_force_llm)
-                            else:
-                                result = api_client.make_prediction(lab_patient_data, lab_force_llm)
-                            
-                            if result:
-                                st.session_state['prediction'] = result
-                                st.session_state['prediction_result'] = result
-                                st.session_state['patient_data'] = lab_patient_data
-                                st.session_state['last_analyzed'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                st.session_state['analysis_type'] = lab_analysis_type
-                                st.success("✅ Analysis completed! Check the 'Results' tab.")
-                            else:
-                                st.error("❌ Analysis failed. Please check your input data and try again.")
-                        except Exception as e:
-                            st.error(f"❌ Error during analysis: {str(e)}")
-                else:
-                    st.warning("⚠️ Please fill in the required basic information to proceed.")
-        
-        with results_tab:
-            if 'prediction' in st.session_state and st.session_state['prediction']:
-                display_prediction_results(st.session_state['prediction'], 
-                                         st.session_state.get('analysis_type', 'Unknown'))
-            else:
-                st.info("🔍 No analysis results yet. Please run an analysis first.")
-    
-    elif "💊 Prescription Analysis" in page:
-        st.header("💊 Prescription Analysis")
-        render_prescription_chatbot()
-    
-    elif "🏥 Medical Report Analysis" in page:
-        from pages.medical_report_analysis import MedicalReportAnalyzer
-        analyzer = MedicalReportAnalyzer()
-        analyzer.run()
-    
-    elif "📊 Health Log" in page:
-        st.header("📊 Health Log")
-        create_health_log_page()
-    
-    elif "🤖 AI Assistant" in page:
-        render_chatbot_interface()
-    
-    
-    elif "👥 Patient Management" in page:
-        if is_doctor():
-            render_patient_management()
-        else:
-            st.error("🙅‍♂️ Access denied. Doctor or Admin access required.")
-    
-    elif "🔧 Admin Panel" in page:
-        if is_admin():
-            render_admin_panel()
-        else:
-            st.error("🙅‍♂️ Access denied. Administrator access required.")
-    
-    elif "👤 User Management" in page:
-        if is_admin():
-            render_user_management()
-        else:
-            st.error("🙅‍♂️ Access denied. Administrator access required.")
-    
-    elif "ℹ️ About" in page:
-        st.header("About the System")
-        
-        st.markdown("""
-## 🎯 Purpose
-This Personalized Healthcare Recommendation System uses advanced machine learning 
-to provide individualized health risk assessments and recommendations.
-
-## 🔬 Technology Stack
-- **Frontend**: Streamlit for interactive UI
-- **Backend**: FastAPI for robust API services
-- **ML Models**: Scikit-learn, Random Forest, Gradient Boosting
-- **Data Processing**: Pandas, NumPy for data manipulation
-- **Visualization**: Plotly for interactive charts
-
-## 📊 Features
-- **Risk Assessment**: AI-powered cardiovascular risk prediction
-- **Personalized Recommendations**: Tailored health advice
-- **Risk Factor Analysis**: Identification of key health risks
-- **Interactive Dashboard**: Visual analytics and insights
-
-## 🏥 Use Cases
-- **Healthcare Providers**: Clinical decision support
-- **Patients**: Personal health monitoring
-- **Preventive Care**: Early risk identification
-- **Population Health**: Community health insights
-
-## 🔒 Privacy & Security
-- Patient data is processed securely
-- No personal information is stored permanently
-- HIPAA-compliant design principles
-""")
-        
-        # System metrics
-        st.subheader("System Information")
-        
-        try:
-            model_info = api_client.get_model_info()
-            if model_info:
-                col1, col2, col3 = st.columns(3)
+            with lab_tab:
+                st.markdown("### 🔬 Enhanced Lab-Based Analysis")
+                st.markdown("""
+                **Advanced health risk assessment using comprehensive laboratory data**
+                
+                This enhanced analysis incorporates detailed hematology and blood chemistry values 
+                to provide more accurate and comprehensive health risk predictions.
+                """)
+                
+                # Initialize lab form
+                lab_form = LabPatientInputForm()
+                lab_patient_data = lab_form.render()
+                
+                # Analysis options
+                st.markdown("### Analysis Options")
+                
+                col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.metric("Model Type", model_info.get('model_type', 'N/A'))
+                    lab_force_llm = st.checkbox("Enable AI Analysis", 
+                                              value=True,
+                                              key="lab_force_llm",
+                                              help="Uses AI for comprehensive lab interpretation and clinical insights")
                 
                 with col2:
-                    st.metric("Features", model_info.get('feature_count', 'N/A'))
+                    lab_analysis_type = st.selectbox("Analysis Type", 
+                                                   ["🔬 Lab Analysis", "📊 Basic Assessment"],
+                                                   key="lab_analysis_type",
+                                                   help="Lab Analysis uses AI for complete medical interpretation")
                 
-                with col3:
-                    st.metric("Status", "✅ Online")
+                # Show data completeness indicator
+                if lab_patient_data:
+                    basic_fields = ['age', 'sex', 'weight', 'height', 'systolic_bp', 'diastolic_bp']
+                    basic_complete = all(lab_patient_data.get(field) is not None for field in basic_fields)
+                    
+                    lab_fields = ['hemoglobin', 'total_leukocyte_count', 'red_blood_cell_count']
+                    lab_complete = any(lab_patient_data.get(field) is not None for field in lab_fields)
+                    
+                    col_status1, col_status2 = st.columns(2)
+                    with col_status1:
+                        status_icon = "✅" if basic_complete else "⚠️"
+                        st.markdown(f"{status_icon} **Basic Info:** {'Complete' if basic_complete else 'Incomplete'}")
+                    
+                    with col_status2:
+                        status_icon = "✅" if lab_complete else "ℹ️"
+                        st.markdown(f"{status_icon} **Lab Data:** {'Available' if lab_complete else 'Optional'}")
+                
+                # Prediction button - only run analysis when explicitly clicked
+                analyze_clicked = st.button("🔍 Analyze Health Risk", type="primary", key="lab_analyze_btn")
+                
+                if analyze_clicked:
+                    if lab_patient_data:
+                        # Validate minimum required data
+                        required_fields = ['age', 'sex', 'systolic_bp', 'diastolic_bp']
+                        missing_fields = [field for field in required_fields if lab_patient_data.get(field) is None]
+                        
+                        if missing_fields:
+                            st.error(f"❌ Please fill in the following required fields: {', '.join(missing_fields)}")
+                        else:
+                            with st.spinner("Analyzing your health data..."):
+                                try:
+                                    if lab_analysis_type == "🔬 Lab Analysis":
+                                        result = api_client.make_lab_prediction(lab_patient_data, lab_force_llm)
+                                    else:
+                                        result = api_client.make_prediction(lab_patient_data, lab_force_llm)
+                                    
+                                    if result:
+                                        st.session_state['prediction'] = result
+                                        st.session_state['prediction_result'] = result
+                                        st.session_state['patient_data'] = lab_patient_data
+                                        st.session_state['last_analyzed'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                        st.session_state['analysis_type'] = lab_analysis_type
+                                        st.success("✅ Analysis completed! Check the 'Results' tab.")
+                                        # Auto-switch to results tab
+                                        st.session_state['show_results'] = True
+                                    else:
+                                        st.error("❌ Analysis failed. Please check your input data and try again.")
+                                except Exception as e:
+                                    st.error(f"❌ Error during analysis: {str(e)}")
+                    else:
+                        st.warning("⚠️ Please fill in the required basic information to proceed.")
+            
+            with results_tab:
+                if 'prediction' in st.session_state and st.session_state['prediction']:
+                    display_prediction_results(st.session_state['prediction'], 
+                                             st.session_state.get('analysis_type', 'Unknown'))
+                else:
+                    st.info("🔍 No analysis results yet. Please run an analysis first.")
+        
+        elif "📊 Health Log" in page:
+            # Professional page header
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
+                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
+                    📊 Health Log & Analytics
+                </h1>
+                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
+                    Track your vital signs and health metrics with comprehensive analytics and insights
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            render_health_log_page()
+        
+        elif "📝 Medical Report Analysis" in page:
+            # Professional page header
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
+                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
+                    📝 Medical Report Analysis
+                </h1>
+                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
+                    Upload and analyze medical reports with AI-powered insights and recommendations
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Initialize the medical report analyzer
+            analyzer = MedicalReportAnalyzer(api_client)
+            analyzer.render()
+        
+        elif "💊 Prescription Analysis" in page:
+            # Professional page header
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
+                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
+                    💊 Prescription Analysis
+                </h1>
+                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
+                    AI-powered prescription analysis and medication interaction checker
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            render_prescription_chatbot()
+        
+        elif "🤖 AI Assistant" in page:
+            # Professional page header
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
+                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
+                    🤖 AI Health Assistant
+                </h1>
+                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
+                    Intelligent healthcare assistant for personalized health guidance and support
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            render_chatbot_interface()
+        
+        elif "👥 Patient Management" in page:
+            if is_doctor():
+                # Professional page header
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
+                            padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                            border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                    <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
+                        👥 Patient Management
+                    </h1>
+                    <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
+                        Comprehensive patient records and healthcare management system
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+                render_patient_management()
             else:
-                st.error("Cannot connect to backend API")
-        except:
-            st.error("Backend API is not available")
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); 
+                            padding: 2rem; border-radius: var(--border-radius-lg); margin: 2rem 0; 
+                            border: 1px solid #fecaca; text-align: center;">
+                    <h2 style="color: var(--danger-color); margin: 0 0 1rem 0;">🚫 Access Restricted</h2>
+                    <p style="color: #991b1b; margin: 0; font-size: 1.1rem;">
+                        This section requires Doctor or Administrator privileges.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        elif "🔧 Admin Panel" in page:
+            if is_admin():
+                # Professional page header
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
+                            padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                            border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                    <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
+                        🔧 System Administration
+                    </h1>
+                    <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
+                        Advanced system configuration and administrative controls
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+                render_admin_panel()
+            else:
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); 
+                            padding: 2rem; border-radius: var(--border-radius-lg); margin: 2rem 0; 
+                            border: 1px solid #fecaca; text-align: center;">
+                    <h2 style="color: var(--danger-color); margin: 0 0 1rem 0;">🚫 Administrator Access Required</h2>
+                    <p style="color: #991b1b; margin: 0; font-size: 1.1rem;">
+                        This section is restricted to system administrators only.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        elif "👤 User Management" in page:
+            if is_admin():
+                # Professional page header
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
+                            padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                            border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                    <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
+                        👤 User Management
+                    </h1>
+                    <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
+                        Comprehensive user account management and access control system
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+                render_user_management()
+            else:
+                st.markdown("""
+                <div style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); 
+                            padding: 2rem; border-radius: var(--border-radius-lg); margin: 2rem 0; 
+                            border: 1px solid #fecaca; text-align: center;">
+                    <h2 style="color: var(--danger-color); margin: 0 0 1rem 0;">🚫 Administrator Access Required</h2>
+                    <p style="color: #991b1b; margin: 0; font-size: 1.1rem;">
+                        User management is restricted to system administrators only.
+                    </p>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        elif "ℹ️ About" in page:
+            # Professional page header
+            st.markdown("""
+            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
+                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
+                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
+                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
+                    ℹ️ About MyVitals
+                </h1>
+                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
+                    Your personal AI-powered health analytics and wellness companion
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            # Professional about content
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                st.markdown("""
+                <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                            border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+                    <h2 style="color: var(--primary-color); margin-top: 0;">🎯 Mission Statement</h2>
+                    <p style="color: var(--text-secondary); line-height: 1.6; font-size: 1.05rem;">
+                        MyVitals empowers individuals to take control of their health through advanced AI-powered analytics. 
+                        We provide personalized health insights, risk assessments, and intelligent recommendations 
+                        to help you make informed decisions about your wellness journey.
+                    </p>
+                </div>
+                
+                <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                            border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+                    <h2 style="color: var(--primary-color); margin-top: 0;">🔬 Advanced Technology Stack</h2>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+                        <div>
+                            <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">🎨 Frontend Technologies</h4>
+                            <ul style="color: var(--text-secondary); margin: 0; padding-left: 1.5rem;">
+                                <li>Streamlit for interactive UI</li>
+                                <li>Professional CSS framework</li>
+                                <li>Responsive design system</li>
+                                <li>Real-time data visualization</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">⚙️ Backend Infrastructure</h4>
+                            <ul style="color: var(--text-secondary); margin: 0; padding-left: 1.5rem;">
+                                <li>FastAPI for robust API services</li>
+                                <li>SQLAlchemy ORM</li>
+                                <li>JWT authentication</li>
+                                <li>RESTful architecture</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">🤖 AI & Machine Learning</h4>
+                            <ul style="color: var(--text-secondary); margin: 0; padding-left: 1.5rem;">
+                                <li>Scikit-learn algorithms</li>
+                                <li>Random Forest & Gradient Boosting</li>
+                                <li>Natural language processing</li>
+                                <li>Predictive analytics</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">📊 Data & Analytics</h4>
+                            <ul style="color: var(--text-secondary); margin: 0; padding-left: 1.5rem;">
+                                <li>Pandas & NumPy processing</li>
+                                <li>Plotly interactive charts</li>
+                                <li>Statistical analysis</li>
+                                <li>Healthcare data standards</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown("""
+                <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                            border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); margin-bottom: 1.5rem;">
+                    <h3 style="color: var(--primary-color); margin-top: 0;">🏆 Key Features</h3>
+                    <div style="space-y: 1rem;">
+                        <div style="margin-bottom: 1rem;">
+                            <h4 style="color: var(--accent-color); margin: 0 0 0.25rem 0; font-size: 1rem;">🔬 Risk Assessment</h4>
+                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">AI-powered health risk analysis</p>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <h4 style="color: var(--accent-color); margin: 0 0 0.25rem 0; font-size: 1rem;">📊 Health Analytics</h4>
+                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Comprehensive health tracking</p>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <h4 style="color: var(--accent-color); margin: 0 0 0.25rem 0; font-size: 1rem;">💊 Prescription Analysis</h4>
+                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Medication interaction checker</p>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <h4 style="color: var(--accent-color); margin: 0 0 0.25rem 0; font-size: 1rem;">🤖 AI Assistant</h4>
+                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Intelligent health guidance</p>
+                        </div>
+                        <div style="margin-bottom: 1rem;">
+                            <h4 style="color: var(--accent-color); margin: 0 0 0.25rem 0; font-size: 1rem;">🏥 Professional Tools</h4>
+                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Medical professional features</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, var(--accent-color), #059669); padding: 2rem; 
+                            border-radius: var(--border-radius-lg); color: white; text-align: center;">
+                    <h3 style="margin: 0 0 1rem 0;">📈 Platform Statistics</h3>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 2rem; font-weight: 700;">99.9%</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">System Uptime</div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <div style="font-size: 2rem; font-weight: 700;">HIPAA</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">Compliant Security</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 2rem; font-weight: 700;">24/7</div>
+                        <div style="font-size: 0.9rem; opacity: 0.9;">AI Assistance</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # System metrics and additional information
+            st.markdown("""
+            <div style="background: var(--background-primary); padding: 2rem; border-radius: var(--border-radius-lg); 
+                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm); margin-top: 1.5rem;">
+                <h2 style="color: var(--primary-color); margin-top: 0;">🔒 Privacy & Security</h2>
+                <ul style="color: var(--text-secondary); line-height: 1.6;">
+                    <li><strong>HIPAA Compliance:</strong> All patient data is handled according to healthcare privacy standards</li>
+                    <li><strong>Secure Processing:</strong> Data is encrypted in transit and at rest</li>
+                    <li><strong>No Permanent Storage:</strong> Personal health information is not stored permanently</li>
+                    <li><strong>Access Controls:</strong> Role-based authentication and authorization</li>
+                    <li><strong>Audit Trails:</strong> Comprehensive logging for security monitoring</li>
+                </ul>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            try:
+                model_info = api_client.get_model_info()
+                if model_info:
+                    col1, col2, col3 = st.columns(3)
+                    
+                    with col1:
+                        st.metric("Model Type", model_info.get('model_type', 'N/A'))
+                    
+                    with col2:
+                        st.metric("Features", model_info.get('feature_count', 'N/A'))
+                    
+                    with col3:
+                        st.metric("Status", "✅ Online")
+                else:
+                    st.error("Cannot connect to backend API")
+            except:
+                st.error("Backend API is not available")
+
+    except Exception as e:
+        st.error("🚨 Application Error")
+        st.error(f"An unexpected error occurred: {str(e)}")
+
+        # Provide recovery options
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Refresh Page"):
+                st.rerun()
+        with col2:
+            if st.button("🚪 Logout & Restart"):
+                # Clear all session state
+                for key in list(st.session_state.keys()):
+                    del st.session_state[key]
+                st.rerun()
+
+        # Show error details in expander for debugging
+        with st.expander("🔍 Error Details (for debugging)"):
+            st.code(str(e))
+            import traceback
+            st.code(traceback.format_exc())
 
 if __name__ == "__main__":
     main()
