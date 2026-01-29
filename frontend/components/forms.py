@@ -24,31 +24,80 @@ class PatientInputForm:
         col1, col2 = st.columns(2)
         
         with col1:
-            age = st.number_input("Age (years)", min_value=18, max_value=120, value=45)
-            sex = st.selectbox("Sex", ["M", "F"], format_func=lambda x: "Male" if x == "M" else "Female")
-            height = st.number_input("Height (cm)", min_value=100, max_value=250, value=170)
-            weight = st.number_input("Weight (kg)", min_value=30.0, max_value=300.0, value=70.0, step=0.1)
+            age = st.number_input(
+                "Age (years) 📅", 
+                min_value=18, max_value=120, value=45,
+                help="Patient's current age in years"
+            )
+            sex = st.selectbox(
+                "Biological Sex 👤", 
+                ["M", "F"], 
+                format_func=lambda x: "Male" if x == "M" else "Female",
+                help="Biological sex affects disease risk factors"
+            )
+            height = st.number_input(
+                "Height (cm) 📏", 
+                min_value=100, max_value=250, value=170,
+                help="Height in centimeters"
+            )
+            weight = st.number_input(
+                "Weight (kg) ⚖️", 
+                min_value=30.0, max_value=300.0, value=70.0, step=0.1,
+                help="Current body weight in kilograms"
+            )
             
-            # Calculate BMI
+            # Calculate BMI with visual indicator
             bmi = weight / ((height/100) ** 2)
-            st.metric("BMI", f"{bmi:.1f}", 
-                     help="Underweight: <18.5, Normal: 18.5-24.9, Overweight: 25-29.9, Obese: ≥30")
+            if bmi < 18.5:
+                bmi_status = "⬇️ Underweight"
+                bmi_color = "orange"
+            elif bmi < 25:
+                bmi_status = "✅ Normal"
+                bmi_color = "green"
+            elif bmi < 30:
+                bmi_status = "⚠️ Overweight"
+                bmi_color = "orange"
+            else:
+                bmi_status = "🔴 Obese"
+                bmi_color = "red"
+            
+            st.metric(
+                "BMI (Body Mass Index)", 
+                f"{bmi:.1f}",
+                delta=bmi_status,
+                help="Underweight: <18.5 | Normal: 18.5-24.9 | Overweight: 25-29.9 | Obese: ≥30"
+            )
         
         with col2:
-            smoking = st.select_slider("Smoking Status", 
-                                     options=[0, 1, 2], 
-                                     format_func=lambda x: ["Never", "Former", "Current"][x])
+            smoking = st.select_slider(
+                "Smoking Status 🚬", 
+                options=[0, 1, 2], 
+                format_func=lambda x: ["Never", "Former", "Current"][x],
+                help="Smoking significantly increases cardiovascular disease risk"
+            )
             
-            diabetes = st.select_slider("Diabetes Status", 
-                                      options=[0, 2, 1], 
-                                      format_func=lambda x: ["No", "Pre-diabetes", "Yes"][x//2])
+            diabetes = st.select_slider(
+                "Diabetes Status 🩸", 
+                options=[0, 2, 1], 
+                format_func=lambda x: ["No", "Pre-diabetes", "Yes"][x//2],
+                help="Diabetes is a major risk factor for heart disease"
+            )
             
-            family_history = st.selectbox("Family History of Heart Disease", 
-                                        [0, 1], 
-                                        format_func=lambda x: "No" if x == 0 else "Yes")
+            family_history = st.selectbox(
+                "Family History of Heart Disease 👨‍👩‍👧‍👦", 
+                [0, 1], 
+                format_func=lambda x: "No" if x == 0 else "Yes",
+                help="Family history of cardiovascular disease increases your risk"
+            )
             
-            hypertension = st.checkbox("History of Hypertension")
-            kidney_disease = st.checkbox("History of Kidney Disease")
+            hypertension = st.checkbox(
+                "History of Hypertension 💊",
+                help="High blood pressure (hypertension) increases heart disease risk"
+            )
+            kidney_disease = st.checkbox(
+                "History of Kidney Disease 🫘",
+                help="Chronic kidney disease is linked to cardiovascular complications"
+            )
         
         # Professional Vital Signs Section
         st.markdown("""
@@ -66,27 +115,48 @@ class PatientInputForm:
         col3, col4 = st.columns(2)
         
         with col3:
-            resting_bp = st.number_input("Resting Blood Pressure (mmHg)", 
-                                       min_value=80, max_value=250, value=120)
+            resting_bp = st.number_input(
+                "Resting Blood Pressure (mmHg) 💓", 
+                min_value=80, max_value=250, value=120,
+                help="Normal: <120 | Elevated: 120-129 | High: ≥130. Systolic blood pressure at rest."
+            )
             
-            max_heart_rate = st.number_input("Maximum Heart Rate (bpm)", 
-                                           min_value=40, max_value=220, value=150)
+            max_heart_rate = st.number_input(
+                "Maximum Heart Rate (bpm) ❤️", 
+                min_value=40, max_value=220, value=150,
+                help="Maximum heart rate achieved. Normal max ≈ 220 - age."
+            )
             
-            sleep_duration = st.number_input("Sleep Duration (hours/night)", 
-                                           min_value=0.0, max_value=24.0, value=7.0, step=0.5)
+            sleep_duration = st.number_input(
+                "Sleep Duration (hours/night) 😴", 
+                min_value=0.0, max_value=24.0, value=7.0, step=0.5,
+                help="Average hours of sleep per night. Recommended: 7-9 hours for adults."
+            )
         
         with col4:
-            cholesterol = st.number_input("Total Cholesterol (mg/dL)", 
-                                        min_value=100, max_value=500, value=200)
+            cholesterol = st.number_input(
+                "Total Cholesterol (mg/dL) 🧪", 
+                min_value=100, max_value=500, value=200,
+                help="Desirable: <200 | Borderline: 200-239 | High: ≥240"
+            )
             
-            hdl = st.number_input("HDL Cholesterol (mg/dL)", 
-                                 min_value=10, max_value=150, value=50)
+            hdl = st.number_input(
+                "HDL Cholesterol (mg/dL) ✅", 
+                min_value=10, max_value=150, value=50,
+                help="Good cholesterol. Higher is better. Optimal: ≥60 | Low: <40 (men) or <50 (women)"
+            )
             
-            ldl = st.number_input("LDL Cholesterol (mg/dL)", 
-                                 min_value=30, max_value=400, value=120)
+            ldl = st.number_input(
+                "LDL Cholesterol (mg/dL) ⚠️", 
+                min_value=30, max_value=400, value=120,
+                help="Bad cholesterol. Lower is better. Optimal: <100 | Borderline: 130-159 | High: ≥160"
+            )
             
-            triglycerides = st.number_input("Triglycerides (mg/dL)", 
-                                          min_value=30, max_value=1000, value=150)
+            triglycerides = st.number_input(
+                "Triglycerides (mg/dL) 💧", 
+                min_value=30, max_value=1000, value=150,
+                help="Normal: <150 | Borderline: 150-199 | High: 200-499 | Very High: ≥500"
+            )
         
         # Professional Blood Work Section
         st.markdown("""
@@ -104,19 +174,31 @@ class PatientInputForm:
         col5, col6 = st.columns(2)
         
         with col5:
-            fasting_blood_sugar = st.number_input("Fasting Blood Sugar (mg/dL)", 
-                                                min_value=50, max_value=500, value=90)
+            fasting_blood_sugar = st.number_input(
+                "Fasting Blood Sugar (mg/dL) 🩸", 
+                min_value=50, max_value=500, value=90,
+                help="Normal: 70-99 | Pre-diabetes: 100-125 | Diabetes: ≥126. Test after 8 hours fasting."
+            )
             
-            hba1c = st.number_input("HbA1c (%)", 
-                                  min_value=3.0, max_value=15.0, value=5.5, step=0.1)
+            hba1c = st.number_input(
+                "HbA1c (%) 📊", 
+                min_value=3.0, max_value=15.0, value=5.5, step=0.1,
+                help="Normal: <5.7% | Pre-diabetes: 5.7-6.4% | Diabetes: ≥6.5%. Average blood sugar over 3 months."
+            )
         
         with col6:
-            exercise_angina = st.selectbox("Exercise Induced Angina", 
-                                         [0, 1], 
-                                         format_func=lambda x: "No" if x == 0 else "Yes")
+            exercise_angina = st.selectbox(
+                "Exercise Induced Angina 🏃‍♂️💔", 
+                [0, 1], 
+                format_func=lambda x: "No" if x == 0 else "Yes",
+                help="Chest pain triggered by physical activity. Important heart disease indicator."
+            )
             
-            oldpeak = st.number_input("ST Depression (Oldpeak)", 
-                                    min_value=0.0, max_value=10.0, value=1.0, step=0.1)
+            oldpeak = st.number_input(
+                "ST Depression - Oldpeak 📉", 
+                min_value=0.0, max_value=10.0, value=1.0, step=0.1,
+                help="ECG measurement. Higher values indicate more severe cardiac stress. Normal: 0-1."
+            )
         
         # Professional Lifestyle Section
         st.markdown("""

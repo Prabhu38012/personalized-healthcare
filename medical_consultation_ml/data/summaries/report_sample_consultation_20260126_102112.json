@@ -1,0 +1,117 @@
+{
+  "audio_file": "sample_consultation.txt",
+  "transcript": {
+    "text": "Doctor: Good morning. What brings you here today? Patient: Hi doctor. I've been having a fever for the past three days, and I'm also experiencing a bad cough. Doctor: I see. Can you tell me more about the fever? How high has it been? Patient: It's been around 101 to 102 degrees Fahrenheit. I've also had body aches and fatigue. Doctor: Any shortness of breath or chest pain? Patient: No chest pain, but sometimes the cough makes it hard to breathe. Doctor: Okay. Let me examine you. *examines patient* Your lungs sound a bit congested. Based on your symptoms, it appears you have an upper respiratory infection, possibly bronchitis. Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days. This antibiotic will help fight the infection. Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches. For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day. Patient: Should I do anything else? Doctor: Yes, make sure to rest, drink plenty of fluids, and use a humidifier if you have one. If your symptoms worsen or you develop difficulty breathing, come back immediately. Patient: Thank you, doctor. Doctor: You're welcome. Follow up in one week if symptoms persist. Take care.",
+    "audio_file": "sample_consultation.txt",
+    "audio_duration": 180.0,
+    "language": "en"
+  },
+  "summary": {
+    "general_summary": "Patient: I've been having a fever for the past three days, and I'm also experiencing a bad cough. Based on your symptoms, it appears you have an upper respiratory infection, possibly bronchitis. Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days. Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches. For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day.",
+    "chief_complaint": "Patient: I've been having a fever for the past three days, and I'm also experiencing a bad cough. Based on your symptoms, it appears you have an upper respiratory infection, possibly bronchitis. Doctor: I'm",
+    "assessment": "Based on your symptoms, it appears you have an upper respiratory infection, possibly bronch",
+    "plan": "Doctor: Amoxicillin 500mg, take it three times daily for 7 days. Ibuprofen 400mg every 6 hours as needed for the fever and body aches. For the cough, I recommend Dextromethorphan 10mg syrup."
+  },
+  "prescriptions": [
+    {
+      "medicine": "Examine",
+      "dosage": null,
+      "frequency": null,
+      "duration": null,
+      "instructions": []
+    },
+    {
+      "medicine": "Amoxicillin",
+      "dosage": "500 mg",
+      "frequency": null,
+      "duration": "for 7 days",
+      "instructions": [
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days"
+      ]
+    },
+    {
+      "medicine": "Amoxicillin 500Mg",
+      "dosage": "500 mg",
+      "frequency": null,
+      "duration": "for 7 days",
+      "instructions": [
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days"
+      ]
+    },
+    {
+      "medicine": "Ibuprofen 400Mg",
+      "dosage": "400 mg",
+      "frequency": "every 6 hours",
+      "duration": null,
+      "instructions": [
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day"
+      ]
+    },
+    {
+      "medicine": "Dextromethorphan 10Mg",
+      "dosage": "400 mg",
+      "frequency": "every 6 hours",
+      "duration": null,
+      "instructions": [
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day"
+      ]
+    },
+    {
+      "medicine": "A",
+      "dosage": "500 mg",
+      "frequency": "every 6 hours",
+      "duration": "for 7 days",
+      "instructions": [
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days",
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days",
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days",
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day",
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day"
+      ]
+    },
+    {
+      "medicine": "I",
+      "dosage": "500 mg",
+      "frequency": "every 6 hours",
+      "duration": "for 7 days",
+      "instructions": [
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days",
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days",
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days",
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day",
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day"
+      ]
+    },
+    {
+      "medicine": "D",
+      "dosage": "500 mg",
+      "frequency": "every 6 hours",
+      "duration": "for 7 days",
+      "instructions": [
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days",
+        "Patient: What should I do about it? Doctor: I'm going to prescribe you Amoxicillin 500mg, take it three times daily for 7 days",
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day",
+        "Also, take Ibuprofen 400mg every 6 hours as needed for the fever and body aches",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day",
+        "For the cough, I recommend Dextromethorphan 10mg syrup, take 2 teaspoons three times a day"
+      ]
+    }
+  ],
+  "prescription_count": 8,
+  "metadata": {
+    "created_at": "2026-01-26T10:21:12.312181",
+    "version": "1.0",
+    "timestamp": "2026-01-26 10:21:12"
+  }
+}

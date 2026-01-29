@@ -1,0 +1,340 @@
+{
+  "audio_file": "20260127_173250_single.mp3",
+  "transcript": {
+    "text": "Hello, doctor. I would like to explain my health problem in detail. For the past three to four weeks, I have been having frequent discomfort in my chest. It usually feels like a heavy pressure or tightness in the middle of my chest, as if something is pressing on it. This pain mostly happens when I walk fast, climb stairs, carry heavy bags, or do any physical work. When I stop and rest for a few minutes, the pain slowly reduces. Sometimes the pain spreads to my left shoulder, left arm, neck, and jaw, along with the chest pain, I often feel short of breath. Even small activities like walking for five minutes or going up one floor make me tired. I also feel very weak and exhausted most of the time. During some of these episodes, I start sweating suddenly. Even when the weather is not hot, I feel dizzy and light-headed, and sometimes I feel like I might faint. My heartbeat becomes very fast and irregular during these times. I have also noticed that these symptoms are becoming more frequent and stronger. Earlier, it happened only once or twice a week, but now it is happening almost every day. I have high blood pressure for the last six years and I am taking medicines irregularly. I also have high cholesterol. I smoke around five to six cigarettes per day and sometimes drink alcohol on weekends. I do not exercise regularly, and most of my time is spent sitting at work. Recently, I have started feeling anxious and scared because of these symptoms. At night, when I lie down, I sometimes feel mild chest discomfort and difficulty in breathing. I also wake up suddenly from sleep with a feeling of suffocation. There are times when I feel pain, even when I am resting, especially after eating heavy food or feeling stressed. I also get frequent headaches and blurred vision. My father had a heart attack at the age of 55 and my mother has diabetes. Because of this family history, I am very worried that I may also have a serious heart problem. I have not done any he.",
+    "segments": [
+      {
+        "start": 0.0,
+        "end": 1.04,
+        "text": "Hello, doctor.",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 1.04,
+        "end": 3.92,
+        "text": "I would like to explain my health problem in detail.",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 3.92,
+        "end": 5.8,
+        "text": "For the past three to four weeks,",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 5.8,
+        "end": 8.56,
+        "text": "I have been having frequent discomfort in my chest.",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 8.56,
+        "end": 10.28,
+        "text": "It usually feels like a heavy pressure",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 10.28,
+        "end": 12.28,
+        "text": "or tightness in the middle of my chest,",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 12.28,
+        "end": 13.84,
+        "text": "as if something is pressing on it.",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 13.84,
+        "end": 16.24,
+        "text": "This pain mostly happens when I walk fast,",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 16.24,
+        "end": 18.36,
+        "text": "climb stairs, carry heavy bags,",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 18.36,
+        "end": 19.68,
+        "text": "or do any physical work.",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 19.68,
+        "end": 21.72,
+        "text": "When I stop and rest for a few minutes,",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 21.72,
+        "end": 23.6,
+        "text": "the pain slowly reduces.",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 23.6,
+        "end": 26.28,
+        "text": "Sometimes the pain spreads to my left shoulder,",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 26.28,
+        "end": 28.84,
+        "text": "left arm, neck, and jaw,",
+        "confidence": -0.10382635015207277
+      },
+      {
+        "start": 28.84,
+        "end": 30.04,
+        "text": "along with the chest pain,",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 30.04,
+        "end": 32.04,
+        "text": "I often feel short of breath.",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 32.04,
+        "end": 34.64,
+        "text": "Even small activities like walking for five minutes",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 34.64,
+        "end": 37.08,
+        "text": "or going up one floor make me tired.",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 37.08,
+        "end": 40.16,
+        "text": "I also feel very weak and exhausted most of the time.",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 40.16,
+        "end": 43.44,
+        "text": "During some of these episodes, I start sweating suddenly.",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 43.44,
+        "end": 45.0,
+        "text": "Even when the weather is not hot,",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 45.0,
+        "end": 46.56,
+        "text": "I feel dizzy and light-headed,",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 46.56,
+        "end": 48.88,
+        "text": "and sometimes I feel like I might faint.",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 48.88,
+        "end": 51.2,
+        "text": "My heartbeat becomes very fast and irregular",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 51.2,
+        "end": 52.44,
+        "text": "during these times.",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 52.44,
+        "end": 54.0,
+        "text": "I have also noticed that these symptoms",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 54.0,
+        "end": 56.08,
+        "text": "are becoming more frequent and stronger.",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 56.08,
+        "end": 58.56,
+        "text": "Earlier, it happened only once or twice a week,",
+        "confidence": -0.0877328161150217
+      },
+      {
+        "start": 58.6,
+        "end": 61.0,
+        "text": "but now it is happening almost every day.",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 61.0,
+        "end": 63.56,
+        "text": "I have high blood pressure for the last six years",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 63.56,
+        "end": 66.08,
+        "text": "and I am taking medicines irregularly.",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 66.08,
+        "end": 67.92,
+        "text": "I also have high cholesterol.",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 67.92,
+        "end": 70.6,
+        "text": "I smoke around five to six cigarettes per day",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 70.6,
+        "end": 72.96,
+        "text": "and sometimes drink alcohol on weekends.",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 72.96,
+        "end": 74.8,
+        "text": "I do not exercise regularly,",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 74.8,
+        "end": 76.92,
+        "text": "and most of my time is spent sitting at work.",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 76.92,
+        "end": 78.84,
+        "text": "Recently, I have started feeling anxious",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 78.84,
+        "end": 80.8,
+        "text": "and scared because of these symptoms.",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 80.8,
+        "end": 82.36,
+        "text": "At night, when I lie down,",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 82.36,
+        "end": 84.48,
+        "text": "I sometimes feel mild chest discomfort",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 84.48,
+        "end": 86.12,
+        "text": "and difficulty in breathing.",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 86.12,
+        "end": 87.88,
+        "text": "I also wake up suddenly from sleep",
+        "confidence": -0.06812098436057568
+      },
+      {
+        "start": 87.92,
+        "end": 89.8,
+        "text": "with a feeling of suffocation.",
+        "confidence": -0.10744338604406668
+      },
+      {
+        "start": 89.8,
+        "end": 91.2,
+        "text": "There are times when I feel pain,",
+        "confidence": -0.10744338604406668
+      },
+      {
+        "start": 91.2,
+        "end": 92.52,
+        "text": "even when I am resting,",
+        "confidence": -0.10744338604406668
+      },
+      {
+        "start": 92.52,
+        "end": 95.36,
+        "text": "especially after eating heavy food or feeling stressed.",
+        "confidence": -0.10744338604406668
+      },
+      {
+        "start": 95.36,
+        "end": 97.96,
+        "text": "I also get frequent headaches and blurred vision.",
+        "confidence": -0.10744338604406668
+      },
+      {
+        "start": 97.96,
+        "end": 100.8,
+        "text": "My father had a heart attack at the age of 55",
+        "confidence": -0.10744338604406668
+      },
+      {
+        "start": 100.8,
+        "end": 102.44,
+        "text": "and my mother has diabetes.",
+        "confidence": -0.10744338604406668
+      },
+      {
+        "start": 102.44,
+        "end": 104.0,
+        "text": "Because of this family history,",
+        "confidence": -0.10744338604406668
+      },
+      {
+        "start": 104.0,
+        "end": 107.4,
+        "text": "I am very worried that I may also have a serious heart problem.",
+        "confidence": -0.10744338604406668
+      },
+      {
+        "start": 107.4,
+        "end": 108.96,
+        "text": "I have not done any he.",
+        "confidence": -0.10744338604406668
+      }
+    ],
+    "language": "en",
+    "language_probability": 1,
+    "duration": 108.832,
+    "model_type": "faster-whisper",
+    "audio_file": "20260127_173250_single.mp3",
+    "audio_duration": 108.832,
+    "sample_rate": 16000
+  },
+  "summary": {
+    "general_summary": "I would to explain my health problem in detail. For the past three to four weeks, I have been having frequent discomfort in my chest. I have high blood pressure for the last six years and I am taking medicines irregularly. Treatment plan discussed with patient.",
+    "chief_complaint": "I would to explain my health problem in detail. For the past three to four weeks, I have been having frequent discomfort in my chest.",
+    "assessment": "I have high blood pressure for the last six years and I am taking medicines irregularly.",
+    "plan": "Treatment plan discussed with patient."
+  },
+  "prescriptions": [],
+  "prescription_count": 0,
+  "metadata": {
+    "created_at": "2026-01-27T17:33:03.954008",
+    "version": "1.0",
+    "timestamp": "2026-01-27 17:33:03"
+  }
+}

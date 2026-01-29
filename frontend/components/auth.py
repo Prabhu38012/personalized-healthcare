@@ -12,7 +12,7 @@ import time
 class AuthManager:
     """Handles authentication state and API calls"""
     
-    def __init__(self, backend_url: str = "http://localhost:8002"):
+    def __init__(self, backend_url: str = "http://localhost:8000"):
         self.backend_url = backend_url
         self.auth_endpoint = f"{backend_url}/api/auth"
     

@@ -1,0 +1,223 @@
+{
+  "audio_file": "20260127_174550_single2.mp3",
+  "transcript": {
+    "text": "Hello doctor, I would like to explain my health problems in detail. For the past four to five months, I have been feeling extremely tired and weak almost every day. Even after sleeping for seven to eight hours at night, I wake up feeling exhausted. I feel low in energy and find it difficult to concentrate on my work. I feel very thirsty throughout the day and keep drinking water again and again. But still, my mouth feels dry. Because of this, I have to go to the bathroom very frequently, especially during the night. Because I wake up three or four times just to urinate. This is disturbing my sleep and making me feel even more tired during the day. I also feel hungry very often. Even after eating a full meal, I start feeling hungry again within two or three hours. I crave sweets and sugary foods most of the time. However, even though I am eating regularly, I have noticed that I am slowly losing weight without trying. Recently, I have started experiencing blurred vision. Sometimes, when I read or use my phone, the letters look unclear. I also get frequent headaches and feel pressure around my eyes. Small cuts and wounds on my hands and feet are taking a very long time to heal. Even minor injuries remain for many days. I have also noticed that my skin feels dry and itchy, especially on my legs and arms. Sometimes, I feel tingling and numbness in my fingers and toes, especially at night. My feet also feel burning or painful at times. This makes it difficult for me to sleep properly. I get frequent infections, such as mouth ulcers, gum problems, and urinary infections. These problems keep coming back even after treatment. I have a strong family history of diabetes. My father and elder sister both have diabetes and are on regular medication. Because of this, I am very worried that I may also have developed this condition. My lifestyle is not very healthy. I do not exercise regularly and I eat a lot of fast food, sweets, and oily snacks. I also spend most of my tea.",
+    "segments": [
+      {
+        "start": 0.0,
+        "end": 4.08,
+        "text": "Hello doctor, I would like to explain my health problems in detail.",
+        "confidence": -0.11828325925365327
+      },
+      {
+        "start": 4.08,
+        "end": 8.0,
+        "text": "For the past four to five months, I have been feeling extremely tired and weak almost",
+        "confidence": -0.11828325925365327
+      },
+      {
+        "start": 8.0,
+        "end": 9.08,
+        "text": "every day.",
+        "confidence": -0.11828325925365327
+      },
+      {
+        "start": 9.08,
+        "end": 13.68,
+        "text": "Even after sleeping for seven to eight hours at night, I wake up feeling exhausted.",
+        "confidence": -0.11828325925365327
+      },
+      {
+        "start": 13.68,
+        "end": 17.28,
+        "text": "I feel low in energy and find it difficult to concentrate on my work.",
+        "confidence": -0.11828325925365327
+      },
+      {
+        "start": 17.28,
+        "end": 21.76,
+        "text": "I feel very thirsty throughout the day and keep drinking water again and again.",
+        "confidence": -0.11828325925365327
+      },
+      {
+        "start": 21.76,
+        "end": 24.4,
+        "text": "But still, my mouth feels dry.",
+        "confidence": -0.11828325925365327
+      },
+      {
+        "start": 24.4,
+        "end": 29.48,
+        "text": "Because of this, I have to go to the bathroom very frequently, especially during the night.",
+        "confidence": -0.11828325925365327
+      },
+      {
+        "start": 29.48,
+        "end": 32.48,
+        "text": "Because I wake up three or four times just to urinate.",
+        "confidence": -0.11584759384166193
+      },
+      {
+        "start": 32.48,
+        "end": 35.92,
+        "text": "This is disturbing my sleep and making me feel even more tired during the day.",
+        "confidence": -0.11584759384166193
+      },
+      {
+        "start": 35.92,
+        "end": 38.04,
+        "text": "I also feel hungry very often.",
+        "confidence": -0.11584759384166193
+      },
+      {
+        "start": 38.04,
+        "end": 42.4,
+        "text": "Even after eating a full meal, I start feeling hungry again within two or three hours.",
+        "confidence": -0.11584759384166193
+      },
+      {
+        "start": 42.4,
+        "end": 45.64,
+        "text": "I crave sweets and sugary foods most of the time.",
+        "confidence": -0.11584759384166193
+      },
+      {
+        "start": 45.64,
+        "end": 51.04,
+        "text": "However, even though I am eating regularly, I have noticed that I am slowly losing weight",
+        "confidence": -0.11584759384166193
+      },
+      {
+        "start": 51.04,
+        "end": 52.04,
+        "text": "without trying.",
+        "confidence": -0.11584759384166193
+      },
+      {
+        "start": 52.04,
+        "end": 55.4,
+        "text": "Recently, I have started experiencing blurred vision.",
+        "confidence": -0.11584759384166193
+      },
+      {
+        "start": 55.4,
+        "end": 59.04,
+        "text": "Sometimes, when I read or use my phone, the letters look unclear.",
+        "confidence": -0.11584759384166193
+      },
+      {
+        "start": 59.08,
+        "end": 62.28,
+        "text": "I also get frequent headaches and feel pressure around my eyes.",
+        "confidence": -0.09691438198621784
+      },
+      {
+        "start": 62.28,
+        "end": 66.96,
+        "text": "Small cuts and wounds on my hands and feet are taking a very long time to heal.",
+        "confidence": -0.09691438198621784
+      },
+      {
+        "start": 66.96,
+        "end": 69.44,
+        "text": "Even minor injuries remain for many days.",
+        "confidence": -0.09691438198621784
+      },
+      {
+        "start": 69.44,
+        "end": 73.92,
+        "text": "I have also noticed that my skin feels dry and itchy, especially on my legs and arms.",
+        "confidence": -0.09691438198621784
+      },
+      {
+        "start": 73.92,
+        "end": 78.8,
+        "text": "Sometimes, I feel tingling and numbness in my fingers and toes, especially at night.",
+        "confidence": -0.09691438198621784
+      },
+      {
+        "start": 78.8,
+        "end": 81.64,
+        "text": "My feet also feel burning or painful at times.",
+        "confidence": -0.09691438198621784
+      },
+      {
+        "start": 81.64,
+        "end": 84.04,
+        "text": "This makes it difficult for me to sleep properly.",
+        "confidence": -0.09691438198621784
+      },
+      {
+        "start": 84.04,
+        "end": 89.36,
+        "text": "I get frequent infections, such as mouth ulcers, gum problems, and urinary infections.",
+        "confidence": -0.0974934789780024
+      },
+      {
+        "start": 89.36,
+        "end": 91.96,
+        "text": "These problems keep coming back even after treatment.",
+        "confidence": -0.0974934789780024
+      },
+      {
+        "start": 91.96,
+        "end": 94.44,
+        "text": "I have a strong family history of diabetes.",
+        "confidence": -0.0974934789780024
+      },
+      {
+        "start": 94.44,
+        "end": 99.24,
+        "text": "My father and elder sister both have diabetes and are on regular medication.",
+        "confidence": -0.0974934789780024
+      },
+      {
+        "start": 99.24,
+        "end": 103.64,
+        "text": "Because of this, I am very worried that I may also have developed this condition.",
+        "confidence": -0.0974934789780024
+      },
+      {
+        "start": 103.64,
+        "end": 105.64,
+        "text": "My lifestyle is not very healthy.",
+        "confidence": -0.0974934789780024
+      },
+      {
+        "start": 105.64,
+        "end": 111.16,
+        "text": "I do not exercise regularly and I eat a lot of fast food, sweets, and oily snacks.",
+        "confidence": -0.0974934789780024
+      },
+      {
+        "start": 111.16,
+        "end": 112.68,
+        "text": "I also spend most of my tea.",
+        "confidence": -0.3471466357057745
+      }
+    ],
+    "language": "en",
+    "language_probability": 1,
+    "duration": 112.7253125,
+    "model_type": "faster-whisper",
+    "audio_file": "20260127_174550_single2.mp3",
+    "audio_duration": 112.725375,
+    "sample_rate": 16000
+  },
+  "summary": {
+    "chief_complaint": "Patient reported extreme tiredness and weakness for four to five months, with associated symptoms of thirst, frequent urination, and hunger. The patient's symptoms triggered the visit due to concerns about developing diabetes.",
+    "assessment": "Patient has a strong family history of diabetes, with the father and elder sister having the condition. The patient's symptoms suggest potential diabetic concerns, including polyuria, polydipsia, and unexplained weight loss. Examination findings may include dry and itchy skin, slow wound healing, and blurred vision. The patient's lifestyle factors, such as a diet high in fast food and sweets, and lack of regular exercise, contribute to the risk of developing diabetes.",
+    "diagnosis": "Suspected diabetes mellitus, given the patient's symptoms and strong family history. Differential diagnoses may include other conditions causing similar symptoms, such as thyroid disorders or anemia.",
+    "risk_factors": "Patient has a strong family history of diabetes, with the father and elder sister having the condition. The patient's lifestyle factors, such as a diet high in fast food and sweets, and lack of regular exercise, also contribute to the risk of developing diabetes.",
+    "symptoms_detailed": "Extreme tiredness and weakness, thirst, frequent urination (especially at night), hunger, cravings for sweets and sugary foods, unexplained weight loss, blurred vision, frequent headaches, dry and itchy skin, slow wound healing, tingling and numbness in fingers and toes, burning or painful feet, frequent infections (mouth ulcers, gum problems, urinary infections)",
+    "plan": "Treatment plan may include lifestyle modifications, such as a healthy diet and regular exercise, and potential medication to manage blood sugar levels. The patient should also undergo diagnostic tests, such as a fasting blood glucose test, to confirm the diagnosis. Follow-up instructions may include regular monitoring of blood sugar levels and adjustment of the treatment plan as needed.",
+    "general_summary": "Patient reported extreme tiredness and weakness for four to five months, with associated symptoms of thirst, frequent urination, and hunger. The patient's symptoms triggered the visit due to concerns about developing diabetes. Patient has a strong family history of diabetes, with the father and elder sister having the condition. The patient's symptoms suggest potential diabetic concerns, including polyuria, polydipsia, and unexplained weight loss. Examination findings may include dry and itchy skin, slow wound healing, and blurred vision. The patient's lifestyle factors, such as a diet high in fast food and sweets, and lack of regular exercise, contribute to the risk of developing diabetes. Treatment plan may include lifestyle modifications, such as a healthy diet and regular exercise, and potential medication to manage blood sugar levels. The patient should also undergo diagnostic tests, such as a fasting blood glucose test, to confirm the diagnosis. Follow-up instructions may include regular monitoring of blood sugar levels and adjustment of the treatment plan as needed."
+  },
+  "prescriptions": [],
+  "prescription_count": 0,
+  "metadata": {
+    "created_at": "2026-01-27T17:46:03.836997",
+    "version": "1.0",
+    "timestamp": "2026-01-27 17:46:03"
+  }
+}

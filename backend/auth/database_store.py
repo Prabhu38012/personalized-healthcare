@@ -10,12 +10,12 @@ from sqlalchemy.exc import IntegrityError
 
 try:
     from backend.db import SessionLocal, engine
-    from backend.auth.db_models import User, MedicalReportAnalysis
+    from backend.auth.db_models import User
     from backend.auth.models import UserCreate, UserUpdate, UserInDB, UserRole
 except ImportError:
     # Fallback for when running from backend directory
     from db import SessionLocal, engine
-    from auth.db_models import User, MedicalReportAnalysis
+    from auth.db_models import User
     from auth.models import UserCreate, UserUpdate, UserInDB, UserRole
 
 
@@ -25,13 +25,12 @@ class DatabaseUserStore:
     def __init__(self):
         # Create tables if they don't exist
         try:
-            from backend.auth.db_models import User as UserModel, MedicalReportAnalysis as ReportModel
+            from backend.auth.db_models import User as UserModel
         except ImportError:
-            from auth.db_models import User as UserModel, MedicalReportAnalysis as ReportModel
+            from auth.db_models import User as UserModel
         
         try:
             UserModel.metadata.create_all(bind=engine)
-            ReportModel.metadata.create_all(bind=engine)
             self._ensure_default_users()
         except Exception as e:
             print(f"Warning: Database initialization failed: {e}")
@@ -91,7 +90,7 @@ class DatabaseUserStore:
                 {
                     "email": "patient@healthcare.com",
                     "full_name": "John Doe",
-                    "password": "Patient123!",
+                    "password": "`Patient123!`",
                     "role": UserRole.PATIENT
                 }
             ]

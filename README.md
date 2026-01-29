@@ -1,103 +1,250 @@
-# 🏥 Personalized Healthcare Prediction System
+# 🏥 MyVitals - AI-Powered Personalized Healthcare System
 
-A comprehensive AI-powered healthcare recommendation system that predicts cardiovascular disease risk using machine learning models and Electronic Health Records (EHR) data.
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![Streamlit](https://img.shields.io/badge/Streamlit-1.28+-red.svg)](https://streamlit.io/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-## 🚀 Quick Start for Friends/Contributors
+A comprehensive, production-ready AI-powered healthcare recommendation system featuring multi-disease risk prediction, explainable AI, document analysis, and real-time health monitoring.
+
+## ✨ Key Features
+
+### 🤖 AI Decision Support
+- **Multi-Disease Prediction**: Heart disease, diabetes, hypertension, obesity, kidney disease, liver disease, and metabolic syndrome
+- **Explainable AI**: SHAP values, feature importance, and confidence intervals
+- **Bias Detection**: Demographic fairness analysis and bias mitigation
+- **Multiple ML Models**: Random Forest, Gradient Boosting, Neural Networks with ensemble predictions
+
+### 📄 Document Analysis
+- **Medical Report Processing**: Upload and analyze PDF, images, or text documents
+- **Prescription Analysis**: Medication identification and drug interaction checking
+- **AI-Powered Extraction**: Using Google Gemini for intelligent text analysis
+- **Historical Tracking**: Store and review previous analyses
+
+### 📊 Health Monitoring
+- **Health Log System**: Track daily metrics (weight, BP, heart rate, glucose)
+- **Trend Analysis**: Historical data visualization and statistics
+- **Real-Time Alerts**: Immediate risk detection and recommendations
+
+### 🔐 Security & Authentication
+- **Role-Based Access**: Admin, Doctor, and Patient roles
+- **JWT Authentication**: Secure token-based auth with 8-hour expiry
+- **Account Security**: Failed login tracking and automatic lockout
+- **Password Strength**: Enforced strong password requirements
+
+## 🚀 Quick Start
 
 ### Prerequisites
+- Python 3.9 or higher
+- 8GB+ RAM recommended
+- Google Gemini API key (optional, for enhanced analysis)
 
-1. **Python 3.8+** (recommended: Python 3.9-3.11)
-2. **Git** installed on your system
-3. **10GB+ free disk space** (for datasets and models)
-4. **8GB+ RAM** (16GB recommended for large datasets)
+### Installation
 
-### 🔧 Setup Instructions
-
-#### 1. Clone the Repository
 ```bash
-git clone <your-repository-url>
+# 1. Clone the repository
+git clone <your-repo-url>
 cd personalized-healthcare
-```
 
-#### 2. Create Virtual Environment
-```bash
-# Windows
+# 2. Create virtual environment
 python -m venv venv
-venv\Scripts\activate
+
+# Windows
+venv\\Scripts\\activate
 
 # macOS/Linux
-python -m venv venv
 source venv/bin/activate
-```
 
-#### 3. Install Dependencies
-```bash
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Configure environment (optional)
+# Copy .env.example to .env and add your Gemini API key
+cp .env.example .env
+# Edit .env and add: GEMINI_API_KEY=your_key_here
 ```
 
-#### 4. Verify Installation
-```bash
-python -c "import streamlit, fastapi, sklearn, pandas; print('✅ All dependencies installed successfully!')"
-```
-
-## 🏃‍♂️ Running the Application
-
-### Option 1: Quick Demo (Recommended)
-Run both frontend and backend with sample data:
+### Running the Application
 
 ```bash
-# Terminal 1: Start Backend API
-cd backend
-python app.py
-
-# Terminal 2: Start Frontend (new terminal)
-cd frontend
-streamlit run app.py
+# Start both backend and frontend
+python start.py
 ```
 
-**Access the app at:**
+The application will be available at:
 - 🌐 **Frontend**: http://localhost:8501
 - 🔧 **Backend API**: http://localhost:8000
 - 📖 **API Docs**: http://localhost:8000/docs
 
-### Option 2: Docker (One-Command Setup)
-```bash
-# Run everything with Docker
-docker-compose up
+### Default Login Credentials
 
-# Or run in background
-docker-compose up -d
-```
+| Role | Email | Password |
+|------|-------|----------|
+| Admin | admin@healthcare.com | Admin123! |
+| Doctor | doctor@healthcare.com | Doctor123! |
+| Patient | patient@healthcare.com | Patient123! |
 
-### Option 3: Production Mode
-```bash
-# Single container with both services
-docker-compose --profile production up
-```
+## 📋 Core Functionality
 
-## 📊 Training Your Own Model
+### 1. Risk Assessment
+Predict cardiovascular and metabolic disease risk using ML models trained on real healthcare data.
 
-### 1. Prepare Dataset
-- Download EHR dataset from Kaggle (JSON format)
-- Place files in: `data/ehr/`
-- **Currently includes sample data** for immediate testing
+**Features:**
+- Multi-disease simultaneous prediction
+- Risk scores with confidence intervals
+- Personalized recommendations
+- Explainable results with SHAP values
 
-### 2. Train Model
-```bash
-cd backend
-python train_config.py
-```
+### 2. AI Decision Support
+Advanced AI system with:
+- Pattern recognition in health data
+- Anomaly detection
+- Bias fairness analysis
+- Real-time monitoring capabilities
 
-### 3. Monitor Training
-- Watch console output for progress
-- Check `training.log` for detailed logs
-- Training time: 30 minutes to 4+ hours
+### 3. Document Analysis
+Upload and analyze:
+- Medical reports (PDF/images)
+- Prescriptions
+- Lab results
+- Text-based health documents
 
-📖 **Detailed training guide**: See [TRAINING_GUIDE.md](./TRAINING_GUIDE.md)
+**AI extracts:**
+- Key findings
+- Medications
+- Drug interactions
+- Recommendations
 
-## 🌟 Features
+### 4. Health Log
+Track daily health metrics:
+- Weight, BMI
+- Blood pressure
+- Heart rate
+- Blood glucose
+- Custom notes
+
+## 🏗️ Technical Architecture
+
+### Backend (FastAPI)
+- RESTful API with 30+ endpoints
+- SQLite database with connection pooling
+- JWT-based authentication
+- Async request handling
+- Comprehensive error handling
 
 ### Frontend (Streamlit)
+- Modern, responsive UI
+- Real-time updates
+- Interactive visualizations
+- Role-based views
+- Session management
+
+### ML Pipeline
+- Scikit-learn models (v1.7.0)
+- Multi-output classification
+- Feature preprocessing & scaling
+- Model versioning
+- SHAP explainability
+
+### AI Integration
+- Google Gemini 2.0 Flash
+- Fallback mechanisms
+- Rate limiting
+- Error resilience
+
+## 📊 API Endpoints
+
+### Authentication
+- `POST /api/auth/login` - User login
+- `GET /api/auth/default-users` - List default accounts
+
+### Risk Assessment
+- `POST /api/predict/` - Get risk prediction
+- `POST /api/predict/batch` - Batch predictions
+
+### AI Decision Support
+- `POST /api/ai-decision/predict` - Advanced AI prediction
+- `POST /api/ai-decision/pattern-analysis` - Pattern detection
+- `POST /api/ai-decision/real-time-monitoring` - Live monitoring
+- `GET /api/ai-decision/model-info` - Model information
+
+### Document Analysis
+- `POST /api/document/upload/medical-report` - Upload medical report
+- `POST /api/document/upload/prescription` - Upload prescription
+- `GET /api/document/list` - List all analyses
+- `GET /api/document/analysis/{id}` - Get specific analysis
+
+### Health Log
+- `POST /api/health-log/` - Create health entry
+- `GET /api/health-log/` - List health entries
+- `GET /api/health-log/statistics` - Get health statistics
+- `PUT /api/health-log/{id}` - Update entry
+- `DELETE /api/health-log/{id}` - Delete entry
+
+## 🛠️ System Improvements
+
+### Performance Optimizations
+✅ **Database**: SQLite WAL mode, connection pooling, optimized pragma settings
+✅ **Caching**: Request caching for health checks and model info
+✅ **Async Operations**: Non-blocking I/O for file uploads
+✅ **Query Optimization**: Indexed queries and efficient joins
+
+### Security Enhancements
+✅ **Input Validation**: Comprehensive sanitization of all inputs
+✅ **XSS Protection**: Text validation against injection attacks
+✅ **SQL Injection**: Parameterized queries throughout
+✅ **Rate Limiting**: API endpoint throttling
+✅ **Secure Sessions**: 8-hour JWT expiry with refresh tokens
+
+### Code Quality
+✅ **Type Hints**: Full typing across codebase
+✅ **Error Handling**: Try-catch blocks with detailed logging
+✅ **Logging**: Structured logging at all levels
+✅ **Documentation**: Comprehensive docstrings and comments
+
+### ML Improvements
+✅ **Model Compatibility**: Version pinning (scikit-learn==1.7.0)
+✅ **Feature Validation**: Range checking for all health metrics
+✅ **Preprocessing**: Standardized scaling and normalization
+✅ **Explainability**: SHAP values with fallback approximations
+
+## 📝 Configuration
+
+### Environment Variables (.env)
+```env
+# AI Services
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Security
+JWT_SECRET_KEY=your_secret_key_here
+SECRET_KEY=your_secret_key_here
+
+# Database
+DATABASE_URL=sqlite:///./healthcare.db
+
+# Server
+BACKEND_PORT=8000
+FRONTEND_PORT=8501
+ENVIRONMENT=production
+
+# Risk Thresholds
+RISK_THRESHOLD_HIGH=0.7
+RISK_THRESHOLD_MEDIUM=0.4
+```
+
+## 🧪 Testing
+
+```bash
+# Run backend tests
+cd backend
+pytest
+
+# Test API endpoints
+curl http://localhost:8000/api/health-log/health
+
+# Check model loading
+python -c "import joblib; print(joblib.load('../models/multi_disease_random_forest_model.pkl'))"
+```
 - 📋 **Patient Data Input Form** - Easy-to-use interface
 - 📊 **Real-time Risk Assessment** - Visual risk indicators
 - 📈 **Interactive Dashboards** - Health metrics visualization

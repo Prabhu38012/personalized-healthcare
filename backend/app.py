@@ -21,74 +21,12 @@ predict_available = False
 try:
     from routes.predict import router as predict_router
     predict_available = True
-    print("✓ Prediction routes imported successfully (relative)")
-except ImportError:
-    try:
-        from backend.routes.predict import router as predict_router
-        predict_available = True
-        print("✓ Prediction routes imported successfully (absolute)")
-    except ImportError as e:
-        print(f"✗ Failed to import prediction routes: {e}")
-        predict_router = None
-        predict_available = False
-        print("⚠️  Prediction module not available")
-
-# Import chatbot routes
-chatbot_router = None
-chatbot_available = False
-
-try:
-    from routes.chatbot import router as chatbot_router
-    chatbot_available = True
-    print("✓ Chatbot routes imported successfully (relative)")
-except ImportError:
-    try:
-        from backend.routes.chatbot import router as chatbot_router
-        chatbot_available = True
-        print("✓ Chatbot routes imported successfully (absolute)")
-    except ImportError as e:
-        print(f"Failed to import chatbot routes: {e}")
-        chatbot_router = None
-        chatbot_available = False
-        print("⚠️  Running without AI chatbot functionality")
-
-# Import prescription routes
-prescription_router = None
-prescription_available = False
-
-try:
-    from routes.prescription import router as prescription_router
-    prescription_available = True
-    print("✓ Prescription routes imported successfully (relative)")
-except ImportError:
-    try:
-        from backend.routes.prescription import router as prescription_router
-        prescription_available = True
-        print("✓ Prescription routes imported successfully (absolute)")
-    except ImportError as e:
-        print(f"Failed to import prescription routes: {e}")
-        prescription_router = None
-        prescription_available = False
-        print("⚠️  Prescription analysis module not available")
-
-# Import medical report routes
-medical_report_router = None
-medical_report_available = False
-
-try:
-    from routes.medical_report import router as medical_report_router
-    medical_report_available = True
-    print("✓ Medical report routes imported successfully (relative)")
-except ImportError:
-    try:
-        from backend.routes.medical_report import router as medical_report_router
-        medical_report_available = True
-        print("✓ Medical report routes imported successfully (absolute)")
-    except ImportError as e:
-        print(f"Failed to import medical report routes: {e}")
-        medical_report_router = None
-        medical_report_available = False
-        print("⚠️  Medical report analysis module not available")
+    print("✓ Prediction routes imported successfully")
+except ImportError as e:
+    print(f"✗ Failed to import prediction routes: {e}")
+    predict_router = None
+    predict_available = False
+    print("⚠️  Prediction module not available")
 
 # Import health log routes
 health_log_router = None
@@ -97,17 +35,40 @@ health_log_available = False
 try:
     from routes.health_log import router as health_log_router
     health_log_available = True
-    print("✓ Health log routes imported successfully (relative)")
-except ImportError:
-    try:
-        from backend.routes.health_log import router as health_log_router
-        health_log_available = True
-        print("✓ Health log routes imported successfully (absolute)")
-    except ImportError as e:
-        print(f"Failed to import health log routes: {e}")
-        health_log_router = None
-        health_log_available = False
-        print("⚠️  Health log module not available")
+    print("✓ Health log routes imported successfully")
+except ImportError as e:
+    print(f"✗ Failed to import health log routes: {e}")
+    health_log_router = None
+    health_log_available = False
+    print("⚠️  Health log module not available")
+
+# Import document analysis routes
+document_router = None
+document_available = False
+
+try:
+    from routes.document_analysis import router as document_router
+    document_available = True
+    print("✓ Document analysis routes imported successfully")
+except ImportError as e:
+    print(f"✗ Failed to import document analysis routes: {e}")
+    document_router = None
+    document_available = False
+    print("⚠️  Document analysis module not available")
+
+# Import consultation routes
+consultation_router = None
+consultation_available = False
+
+try:
+    from routes.consultation import router as consultation_router
+    consultation_available = True
+    print("✓ Medical consultation routes imported successfully")
+except ImportError as e:
+    print(f"✗ Failed to import consultation routes: {e}")
+    consultation_router = None
+    consultation_available = False
+    print("⚠️  Medical consultation module not available")
 
 # Import authentication routes with absolute imports first
 auth_router = None
@@ -118,20 +79,12 @@ try:
     from auth.database_store import get_db
     from auth.routes import router as auth_router
     auth_available = True
-    print("✓ Authentication routes imported successfully (relative)")
-except ImportError as e1:
-    try:
-        # Fallback to absolute import
-        from backend.auth.database_store import get_db
-        from backend.auth.routes import router as auth_router
-        auth_available = True
-        print("✓ Authentication routes imported successfully (absolute)")
-    except ImportError as e2:
-        print(f"Failed to import auth routes (relative): {e1}")
-        print(f"Failed to import auth routes (absolute): {e2}")
-        auth_router = None
-        auth_available = False
-        print("⚠️  Authentication module not available")
+    print("✓ Authentication routes imported successfully")
+except ImportError as e:
+    print(f"✗ Failed to import auth routes: {e}")
+    auth_router = None
+    auth_available = False
+    print("⚠️  Authentication module not available")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -160,41 +113,6 @@ if predict_available and predict_router:
 else:
     print("⚠️  Running without prediction functionality")
 
-if chatbot_available and chatbot_router:
-    app.include_router(chatbot_router, prefix="/api", tags=["chatbot"])
-    print("✓ Chatbot routes registered at /api")
-    print("Available chatbot endpoints:")
-    print("  - POST /api/chat")
-    print("  - GET /api/chat/health")
-    print("  - POST /api/chat/explain-risk")
-else:
-    print("⚠️  Running without AI chatbot functionality")
-
-if prescription_available and prescription_router:
-    app.include_router(prescription_router, prefix="/api/prescription", tags=["prescription"])
-    print("✓ Prescription routes registered at /api/prescription")
-    print("Available prescription endpoints:")
-    print("  - POST /api/prescription/upload")
-    print("  - POST /api/prescription/medicine-info")
-    print("  - GET /api/prescription/health")
-else:
-    print("⚠️  Running without prescription analysis functionality")
-
-if medical_report_available and medical_report_router:
-    app.include_router(medical_report_router, prefix="/api/medical-report", tags=["medical-report"])
-    print("✓ Medical report routes registered at /api/medical-report")
-    print("Available medical report endpoints:")
-    print("  - POST /api/medical-report/upload")
-    print("  - GET /api/medical-report/analysis/{analysis_id}")
-    print("  - GET /api/medical-report/download/{analysis_id}")
-    print("  - GET /api/medical-report/list")
-    print("  - DELETE /api/medical-report/analysis/{analysis_id}")
-    print("  - GET /api/medical-report/lifestyle-recommendations/{analysis_id}")
-    print("  - GET /api/medical-report/statistics")
-    print("  - GET /api/medical-report/health")
-else:
-    print("⚠️  Running without medical report analysis functionality")
-
 if health_log_available and health_log_router:
     app.include_router(health_log_router, prefix="/api/health-log", tags=["health-log"])
     print("✓ Health log routes registered at /api/health-log")
@@ -219,6 +137,56 @@ if auth_available and auth_router:
 else:
     print("⚠️  Running in demo mode without authentication")
     print("  - Authentication endpoints will return 404")
+
+if consultation_available and consultation_router:
+    app.include_router(consultation_router, prefix="/api/consultation", tags=["consultation"])
+    print("✓ Medical consultation routes registered at /api/consultation")
+    print("Available consultation endpoints:")
+    print("  - POST /api/consultation/process")
+    print("  - GET /api/consultation/history")
+    print("  - GET /api/consultation/report/<filename>")
+    print("  - GET /api/consultation/status")
+else:
+    print("⚠️  Running without medical consultation functionality")
+
+if document_available and document_router:
+    app.include_router(document_router, prefix="/api/document", tags=["document-analysis"])
+    print("✓ Document analysis routes registered at /api/document")
+    print("Available document endpoints:")
+    print("  - POST /api/document/upload/medical-report")
+    print("  - POST /api/document/upload/prescription")
+    print("  - GET /api/document/analysis/{analysis_id}")
+    print("  - GET /api/document/list")
+    print("  - DELETE /api/document/analysis/{analysis_id}")
+    print("  - GET /api/document/health")
+else:
+    print("⚠️  Running without document analysis functionality")
+
+# Import AI decision support routes
+ai_decision_router = None
+ai_decision_available = False
+
+try:
+    from routes.ai_decision_support import router as ai_decision_router
+    ai_decision_available = True
+    print("✓ AI Decision Support routes imported successfully")
+except ImportError as e:
+    print(f"✗ Failed to import AI decision support routes: {e}")
+    ai_decision_router = None
+    ai_decision_available = False
+    print("⚠️  AI Decision Support module not available")
+
+if ai_decision_available and ai_decision_router:
+    app.include_router(ai_decision_router, prefix="/api", tags=["ai-decision-support"])
+    print("✓ AI Decision Support routes registered at /api/ai-decision")
+    print("Available AI endpoints:")
+    print("  - POST /api/ai-decision/predict")
+    print("  - POST /api/ai-decision/pattern-analysis")
+    print("  - POST /api/ai-decision/real-time-monitoring")
+    print("  - GET /api/ai-decision/health")
+    print("  - GET /api/ai-decision/model-info")
+else:
+    print("⚠️  Running without AI Decision Support functionality")
 
 @app.get("/")
 async def root():
@@ -255,5 +223,52 @@ async def version_info():
 async def test_endpoint():
     return {"message": "This is a test endpoint"}
 
+@app.get("/api/model-info")
+async def get_model_info():
+    """Get comprehensive model information"""
+    info = {
+        "version": "1.0.0",
+        "status": "operational",
+        "models": {}
+    }
+    
+    # Get AI Decision Support model info
+    if ai_decision_available:
+        try:
+            from routes.ai_decision_support import MODEL_SOURCE, disease_targets, feature_names
+            info["models"]["ai_decision"] = {
+                "source": MODEL_SOURCE,
+                "available": True,
+                "diseases": disease_targets if 'disease_targets' in dir() else ["high_risk"],
+                "features_count": len(feature_names) if 'feature_names' in dir() else 0
+            }
+        except:
+            info["models"]["ai_decision"] = {"available": False}
+    
+    # Get prediction model info
+    if predict_available:
+        try:
+            from routes.predict import load_model
+            model_data = load_model()
+            if model_data:
+                info["models"]["prediction"] = {
+                    "available": True,
+                    "features": model_data.get('feature_columns', []),
+                    "type": model_data.get('model_type', 'unknown')
+                }
+            else:
+                info["models"]["prediction"] = {"available": False}
+        except:
+            info["models"]["prediction"] = {"available": False}
+    
+    return info
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
+    # Increase timeout for large audio file processing with AI models
+    uvicorn.run(
+        app, 
+        host="0.0.0.0", 
+        port=8000, 
+        reload=False,
+        timeout_keep_alive=900  # 15 minutes for large files
+    )

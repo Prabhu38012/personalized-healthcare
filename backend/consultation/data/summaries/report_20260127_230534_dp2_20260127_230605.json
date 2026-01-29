@@ -1,0 +1,344 @@
+{
+  "audio_file": "20260127_230534_dp2.mp3",
+  "transcript": {
+    "text": "Dr. Good morning. Please come in and have a seat. How have you been feeling since your last visit? Patient. Good morning, doctor. I am feeling a little better, but I still get chest discomfort when I walk fast or climb stairs. Sometimes I also feel tired and short of breath. Dr. How long does the chest pain usually last? Patient. It lasts for about five to ten minutes and then goes away when I rest. Dr. Does it spread to your left arm, jaw or back? Patient. Yes, sometimes it spreads to my left shoulder and arm. Dr. That is important. Have you noticed any sweating, nausea or dizziness during these episodes? Patient. Yes, doctor. Sometimes I sweat a lot and feel slightly dizzy. Dr. Have you been taking your medicines regularly? Patient. Yes, doctor. I take them every day in the morning and at night as you told me. Dr. Good, let me see your reports. Your ECG shows mild changes and your cholesterol is still high. Your LDL cholesterol is 160, which should be below 100. Patient. Is that dangerous, doctor? Dr. Yes, if it remains high, it can block your arteries and increase the risk of heart attack, so we need to strengthen your treatment. Now I will adjust your medicines. First, take Rosuba statin 20 milligrams, one tablet every night after dinner, for six months to reduce cholesterol. Second, take Lapidogrel 75 milligrams, one tablet once daily after breakfast to prevent blood clots. Third, take metaprolol 50 milligrams, one tablet twice daily, once in the morning and once at night to control heart rate and blood pressure. Fourth, take ISO Sorbide mononitrate 30 milligrams, one tablet every morning on an empty stomach to prevent chest pain. Fifth, take aspirin 75 milligrams, one tablet once daily after food, lifelong unless I advise otherwise. Sixth, take pantoprosol 40 milligrams, one tablet before breakfast, for four weeks, to protect your stomach from acidity due to these medicines. Patient, that is many tablets, doctor. Will I have any side effects? Doctor, most people tolerate these medicines well. You may sometimes feel mild dizziness or tiredness in the beginning. If you get severe weakness, black stools, bleeding, or severe stomach pain, contact me immediately. Patient, okay doctor, what should I do if I get sudden chest pain? Doctor, always carry nitroglycerin tablets with you. If you get severe chest pain, place one tablet under your tongue and let it dissolve. Do not swallow it. If the pain does not reduce in five minutes, take another tablet. You can take up to three tablets at five minute intervals. If the pain still continues after 15 minutes, go to the nearest emergency hospital immediately. Patient, I understand doctor. Should I change my diet also? Doctor, yes diet is very important. Avoid fried food, fast food, butter, ghee, red meat, and bakery items. Eat more fruits, vegetables, whole grains, oats, and fish. Use low fat milk and avoid full cream dairy products. Reduce salt intake to less than five grams per day. Drink at least two liters of water daily. Patient, can I do exercise? Doctor, yes but do it safely. Walk slowly for 20 to 30 minutes daily. Do not run or lift heavy weights. Stop exercising immediately if you feel chest pain, breathlessness, or dizziness. Patient, do I need any more tests? Doctor, yes. After three weeks, please do a lipid profile, ECG, echocardiogram, and treadmill stress test. Bring all the reports during your next visit. We will decide further treatment based on the results. Patient, when should I come back for review? Doctor, come after three weeks with your test reports. If your chest pain increases or if you feel severe weakness, fainting, or sudden breathlessness, come immediately without waiting. Patient, thank you very much doctor. I will follow all your instructions carefully. Doctor, you are welcome. Take your medicines regularly, maintain a healthy lifestyle, and take care of your heart. I will see you at the next visit.",
+    "segments": [
+      {
+        "start": 0.0,
+        "end": 6.8,
+        "text": "Dr. Good morning. Please come in and have a seat. How have you been feeling since your last visit? Patient.",
+        "confidence": -0.1437365958094597
+      },
+      {
+        "start": 7.36,
+        "end": 12.8,
+        "text": "Good morning, doctor. I am feeling a little better, but I still get chest discomfort when I walk fast",
+        "confidence": -0.1437365958094597
+      },
+      {
+        "start": 12.8,
+        "end": 20.46,
+        "text": "or climb stairs. Sometimes I also feel tired and short of breath. Dr. How long does the chest pain",
+        "confidence": -0.1437365958094597
+      },
+      {
+        "start": 20.46,
+        "end": 26.14,
+        "text": "usually last? Patient. It lasts for about five to ten minutes and then goes away when I rest.",
+        "confidence": -0.1437365958094597
+      },
+      {
+        "start": 26.94,
+        "end": 34.96,
+        "text": "Dr. Does it spread to your left arm, jaw or back? Patient. Yes, sometimes it spreads to my left",
+        "confidence": -0.10048637439295188
+      },
+      {
+        "start": 34.96,
+        "end": 42.14,
+        "text": "shoulder and arm. Dr. That is important. Have you noticed any sweating, nausea or dizziness during",
+        "confidence": -0.10048637439295188
+      },
+      {
+        "start": 42.14,
+        "end": 48.38,
+        "text": "these episodes? Patient. Yes, doctor. Sometimes I sweat a lot and feel slightly dizzy.",
+        "confidence": -0.10048637439295188
+      },
+      {
+        "start": 49.5,
+        "end": 56.38,
+        "text": "Dr. Have you been taking your medicines regularly? Patient. Yes, doctor. I take them every day",
+        "confidence": -0.10048637439295188
+      },
+      {
+        "start": 56.38,
+        "end": 63.09,
+        "text": "in the morning and at night as you told me. Dr. Good, let me see your reports. Your ECG",
+        "confidence": -0.07131818569067752
+      },
+      {
+        "start": 63.09,
+        "end": 70.13,
+        "text": "shows mild changes and your cholesterol is still high. Your LDL cholesterol is 160, which should",
+        "confidence": -0.07131818569067752
+      },
+      {
+        "start": 70.13,
+        "end": 80.58,
+        "text": "be below 100. Patient. Is that dangerous, doctor? Dr. Yes, if it remains high, it can block your arteries",
+        "confidence": -0.07131818569067752
+      },
+      {
+        "start": 80.58,
+        "end": 85.62,
+        "text": "and increase the risk of heart attack, so we need to strengthen your treatment. Now I will adjust",
+        "confidence": -0.07131818569067752
+      },
+      {
+        "start": 85.62,
+        "end": 91.78,
+        "text": "your medicines. First, take Rosuba statin 20 milligrams, one tablet every night after dinner,",
+        "confidence": -0.170052115270432
+      },
+      {
+        "start": 91.78,
+        "end": 99.41,
+        "text": "for six months to reduce cholesterol. Second, take Lapidogrel 75 milligrams, one tablet once daily",
+        "confidence": -0.170052115270432
+      },
+      {
+        "start": 99.41,
+        "end": 106.93,
+        "text": "after breakfast to prevent blood clots. Third, take metaprolol 50 milligrams, one tablet twice daily,",
+        "confidence": -0.170052115270432
+      },
+      {
+        "start": 106.93,
+        "end": 113.66,
+        "text": "once in the morning and once at night to control heart rate and blood pressure. Fourth, take ISO",
+        "confidence": -0.170052115270432
+      },
+      {
+        "start": 113.66,
+        "end": 120.54,
+        "text": "Sorbide mononitrate 30 milligrams, one tablet every morning on an empty stomach to prevent chest pain.",
+        "confidence": -0.14054175666583482
+      },
+      {
+        "start": 121.46,
+        "end": 129.33,
+        "text": "Fifth, take aspirin 75 milligrams, one tablet once daily after food, lifelong unless I advise",
+        "confidence": -0.14054175666583482
+      },
+      {
+        "start": 129.33,
+        "end": 137.22,
+        "text": "otherwise. Sixth, take pantoprosol 40 milligrams, one tablet before breakfast, for four weeks,",
+        "confidence": -0.14054175666583482
+      },
+      {
+        "start": 137.22,
+        "end": 143.94,
+        "text": "to protect your stomach from acidity due to these medicines. Patient, that is many tablets,",
+        "confidence": -0.14054175666583482
+      },
+      {
+        "start": 143.94,
+        "end": 150.98,
+        "text": "doctor. Will I have any side effects? Doctor, most people tolerate these medicines well. You may",
+        "confidence": -0.10110549861565232
+      },
+      {
+        "start": 150.98,
+        "end": 156.9,
+        "text": "sometimes feel mild dizziness or tiredness in the beginning. If you get severe weakness, black",
+        "confidence": -0.10110549861565232
+      },
+      {
+        "start": 156.9,
+        "end": 164.62,
+        "text": "stools, bleeding, or severe stomach pain, contact me immediately. Patient, okay doctor, what should I",
+        "confidence": -0.10110549861565232
+      },
+      {
+        "start": 164.62,
+        "end": 171.15,
+        "text": "do if I get sudden chest pain? Doctor, always carry nitroglycerin tablets with you. If you get",
+        "confidence": -0.10110549861565232
+      },
+      {
+        "start": 171.15,
+        "end": 176.83,
+        "text": "severe chest pain, place one tablet under your tongue and let it dissolve. Do not swallow it. If the",
+        "confidence": -0.07508402366353117
+      },
+      {
+        "start": 176.83,
+        "end": 182.27,
+        "text": "pain does not reduce in five minutes, take another tablet. You can take up to three tablets at five",
+        "confidence": -0.07508402366353117
+      },
+      {
+        "start": 182.27,
+        "end": 188.35,
+        "text": "minute intervals. If the pain still continues after 15 minutes, go to the nearest emergency hospital",
+        "confidence": -0.07508402366353117
+      },
+      {
+        "start": 188.35,
+        "end": 197.15,
+        "text": "immediately. Patient, I understand doctor. Should I change my diet also? Doctor, yes diet is very",
+        "confidence": -0.07508402366353117
+      },
+      {
+        "start": 197.15,
+        "end": 203.95,
+        "text": "important. Avoid fried food, fast food, butter, ghee, red meat, and bakery items. Eat more fruits,",
+        "confidence": -0.0699682505428791
+      },
+      {
+        "start": 203.95,
+        "end": 210.51,
+        "text": "vegetables, whole grains, oats, and fish. Use low fat milk and avoid full cream dairy products.",
+        "confidence": -0.0699682505428791
+      },
+      {
+        "start": 210.51,
+        "end": 215.79,
+        "text": "Reduce salt intake to less than five grams per day. Drink at least two liters of water daily.",
+        "confidence": -0.0699682505428791
+      },
+      {
+        "start": 216.66,
+        "end": 225.3,
+        "text": "Patient, can I do exercise? Doctor, yes but do it safely. Walk slowly for 20 to 30 minutes daily.",
+        "confidence": -0.0699682505428791
+      },
+      {
+        "start": 225.38,
+        "end": 230.5,
+        "text": "Do not run or lift heavy weights. Stop exercising immediately if you feel chest pain,",
+        "confidence": -0.08686724584549665
+      },
+      {
+        "start": 230.5,
+        "end": 238.53,
+        "text": "breathlessness, or dizziness. Patient, do I need any more tests? Doctor, yes. After three weeks,",
+        "confidence": -0.08686724584549665
+      },
+      {
+        "start": 238.53,
+        "end": 245.01,
+        "text": "please do a lipid profile, ECG, echocardiogram, and treadmill stress test. Bring all the reports",
+        "confidence": -0.08686724584549665
+      },
+      {
+        "start": 245.01,
+        "end": 251.2,
+        "text": "during your next visit. We will decide further treatment based on the results. Patient, when should I",
+        "confidence": -0.08686724584549665
+      },
+      {
+        "start": 251.2,
+        "end": 257.84,
+        "text": "come back for review? Doctor, come after three weeks with your test reports. If your chest pain",
+        "confidence": -0.08358974462108952
+      },
+      {
+        "start": 257.84,
+        "end": 263.44,
+        "text": "increases or if you feel severe weakness, fainting, or sudden breathlessness, come immediately without",
+        "confidence": -0.08358974462108952
+      },
+      {
+        "start": 263.44,
+        "end": 269.38,
+        "text": "waiting. Patient, thank you very much doctor. I will follow all your instructions carefully.",
+        "confidence": -0.08358974462108952
+      },
+      {
+        "start": 270.66,
+        "end": 277.26,
+        "text": "Doctor, you are welcome. Take your medicines regularly, maintain a healthy lifestyle,",
+        "confidence": -0.08358974462108952
+      },
+      {
+        "start": 277.26,
+        "end": 285.58,
+        "text": "and take care of your heart. I will see you at the next visit.",
+        "confidence": -0.26441815024928045
+      }
+    ],
+    "language": "en",
+    "language_probability": 1,
+    "duration": 280.58125,
+    "model_type": "faster-whisper",
+    "audio_file": "20260127_230534_dp2.mp3",
+    "audio_duration": 280.58125,
+    "sample_rate": 16000
+  },
+  "summary": {
+    "chief_complaint": "Patient reported chest discomfort when walking fast or climbing stairs, accompanied by tiredness and shortness of breath, which prompted the visit.",
+    "assessment": "Patient has high cholesterol with an LDL level of 160, and ECG shows mild changes, indicating a risk of heart attack. Examination findings include chest pain radiating to the left shoulder and arm, sweating, and dizziness. The patient's medical history and current symptoms suggest cardiac concerns.",
+    "diagnosis": "Patient has suspected coronary artery disease, given the chest pain characteristics and high cholesterol levels.",
+    "risk_factors": "Patient has high cholesterol, which increases the risk of heart attack, but no explicit mention of age, smoking status, family history, or other lifestyle factors.",
+    "symptoms_detailed": "Chest discomfort, tiredness, shortness of breath, chest pain radiating to the left shoulder and arm, sweating, dizziness, and mild dizziness or tiredness as potential side effects of medication.",
+    "plan": "Treatment plan includes Rosuba statin 20mg nightly, Lapidogrel 75mg daily, metaprolol 50mg twice daily, ISO Sorbide mononitrate 30mg daily, aspirin 75mg daily, and pantoprosol 40mg daily for four weeks. Lifestyle advice includes a low-fat diet, exercise, and follow-up tests in three weeks.",
+    "general_summary": "Patient reported chest discomfort when walking fast or climbing stairs, accompanied by tiredness and shortness of breath, which prompted the visit. Patient has high cholesterol with an LDL level of 160, and ECG shows mild changes, indicating a risk of heart attack. Examination findings include chest pain radiating to the left shoulder and arm, sweating, and dizziness. The patient's medical history and current symptoms suggest cardiac concerns. Treatment plan includes Rosuba statin 20mg nightly, Lapidogrel 75mg daily, metaprolol 50mg twice daily, ISO Sorbide mononitrate 30mg daily, aspirin 75mg daily, and pantoprosol 40mg daily for four weeks. Lifestyle advice includes a low-fat diet, exercise, and follow-up tests in three weeks."
+  },
+  "prescriptions": [
+    {
+      "medicine": "Rosuba statin",
+      "dosage": "20mg",
+      "frequency": "once daily",
+      "duration": "6 months",
+      "instructions": [
+        "Take after dinner"
+      ]
+    },
+    {
+      "medicine": "Lapidogrel",
+      "dosage": "75mg",
+      "frequency": "once daily",
+      "duration": "None",
+      "instructions": [
+        "Take after breakfast"
+      ]
+    },
+    {
+      "medicine": "metaprolol",
+      "dosage": "50mg",
+      "frequency": "twice daily",
+      "duration": "None",
+      "instructions": [
+        "Take in the morning and at night"
+      ]
+    },
+    {
+      "medicine": "ISO Sorbide mononitrate",
+      "dosage": "30mg",
+      "frequency": "once daily",
+      "duration": "None",
+      "instructions": [
+        "Take on an empty stomach in the morning"
+      ]
+    },
+    {
+      "medicine": "aspirin",
+      "dosage": "75mg",
+      "frequency": "once daily",
+      "duration": "None",
+      "instructions": [
+        "Take after food",
+        "Lifelong unless advised otherwise"
+      ]
+    },
+    {
+      "medicine": "pantoprosol",
+      "dosage": "40mg",
+      "frequency": "once daily",
+      "duration": "4 weeks",
+      "instructions": [
+        "Take before breakfast"
+      ]
+    },
+    {
+      "medicine": "nitroglycerin",
+      "dosage": "None",
+      "frequency": "as needed",
+      "duration": "None",
+      "instructions": [
+        "Place one tablet under the tongue and let it dissolve",
+        "Do not swallow",
+        "Take up to three tablets at five minute intervals if pain persists"
+      ]
+    }
+  ],
+  "prescription_count": 7,
+  "metadata": {
+    "created_at": "2026-01-27T23:06:05.606515",
+    "version": "1.0",
+    "timestamp": "2026-01-27 23:06:05"
+  }
+}

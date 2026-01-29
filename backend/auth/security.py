@@ -54,10 +54,16 @@ except Exception as e:
         
         pwd_context = DirectBcryptContext()
 
-# JWT settings
-SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+# JWT settings with enhanced security
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", os.getenv("SECRET_KEY", secrets.token_urlsafe(32)))
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour
+ACCESS_TOKEN_EXPIRE_MINUTES = 480  # 8 hours for better user experience
+REFRESH_TOKEN_EXPIRE_DAYS = 7
+
+# Log warning if using default secret
+if SECRET_KEY == secrets.token_urlsafe(32):
+    import logging
+    logging.warning("⚠️  Using randomly generated SECRET_KEY. Set JWT_SECRET_KEY in .env for production!")
 
 
 def get_password_hash(password: str) -> str:

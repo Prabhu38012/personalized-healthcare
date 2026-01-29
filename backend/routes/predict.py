@@ -9,8 +9,15 @@ import joblib
 import pandas as pd
 import numpy as np
 
-# Import LLM analyzer
-from ..utils.llm_analyzer import llm_analyzer
+# Import LLM analyzer with proper fallback
+try:
+    from utils.llm_analyzer import llm_analyzer
+except ImportError:
+    try:
+        from backend.utils.llm_analyzer import llm_analyzer
+    except ImportError:
+        llm_analyzer = None
+        logging.warning("LLM analyzer not available")
 
 # Import authentication dependencies with absolute imports first
 try:

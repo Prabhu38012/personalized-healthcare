@@ -23,9 +23,6 @@ from components.auth import (
     render_user_info, require_auth, get_auth_headers, is_admin, is_doctor,
     show_development_credentials
 )
-from components.chatbot import render_chatbot_interface, render_chatbot_sidebar
-from components.prescription_chatbot import render_prescription_chatbot
-from pages.medical_report_analysis import MedicalReportAnalyzer
 from utils.api_client import HealthcareAPI
 from utils.caching import cleanup_expired_cache, get_cache_stats
 import json
@@ -33,51 +30,320 @@ import time
 import os
 from datetime import datetime, timedelta
 
+def display_welcome_banner():
+    """Display an engaging welcome banner with quick action guidance"""
+    st.markdown("""
+    <div style="background: linear-gradient(135deg, #0891b2 0%, #10b981 100%);
+                border-radius: 16px;
+                padding: 2rem;
+                margin-bottom: 2rem;
+                box-shadow: 0 10px 30px -5px rgba(8, 145, 178, 0.3);
+                color: white;">
+        <div style="display: flex; align-items: center; gap: 1.5rem; margin-bottom: 1rem;">
+            <div style="font-size: 3rem;">👨‍⚕️</div>
+            <div>
+                <h1 style="margin: 0; font-size: 2rem; font-weight: 700;">Welcome to MyVitals</h1>
+                <p style="margin: 0.5rem 0 0; opacity: 0.95; font-size: 1.1rem;">AI-Powered Personalized Health Analytics</p>
+            </div>
+        </div>
+        <div style="background: rgba(255,255,255,0.15);
+                    border-radius: 12px;
+                    padding: 1.25rem;
+                    backdrop-filter: blur(10px);">
+            <p style="margin: 0; font-size: 0.95rem; line-height: 1.6;">
+                <strong>🎯 Quick Start:</strong> Select an option from the sidebar to begin. 
+                Upload medical documents, enter health data manually, or access AI decision support for comprehensive health analysis.
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
 def load_css():
-    """Load custom CSS styles - cached for performance"""
+    """Load modern custom CSS styles with shadcn-inspired design"""
     if 'css_loaded' not in st.session_state:
-        css_file = os.path.join(os.path.dirname(__file__), "assets", "styles.css")
-        if os.path.exists(css_file):
-            # Enhanced CSS with professional design system and improved color grading
-            st.markdown("""
-            <style>
-            :root {
-                --primary-color: #059669;
-                --primary-dark: #047857;
-                --secondary-color: #f0fdf4;
-                --accent-color: #10b981;
-                --background-primary: #ffffff;
-                --background-secondary: #f7fef9;
-                --text-primary: #064e3b;
-                --text-secondary: #065f46;
-                --border-color: #d1fae5;
-                --shadow-sm: 0 1px 2px 0 rgb(5 150 105 / 0.05);
-                --shadow-md: 0 4px 6px -1px rgb(5 150 105 / 0.1), 0 2px 4px -2px rgb(5 150 105 / 0.1);
-                --shadow-lg: 0 10px 15px -3px rgb(5 150 105 / 0.1), 0 4px 6px -4px rgb(5 150 105 / 0.1);
-                --border-radius-sm: 0.375rem;
-                --border-radius-md: 0.5rem;
-                --border-radius-lg: 0.75rem;
-                --border-radius-xl: 1rem;
+        st.markdown("""
+        <style>
+        /* Import Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        
+        /* CSS Variables - Healthcare optimized color palette */
+        :root {
+            --primary: #0891b2;
+            --primary-light: #06b6d4;
+            --primary-dark: #0e7490;
+            --secondary: #64748b;
+            --accent: #10b981;
+            --accent-light: #34d399;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
+            --background: #f8fafc;
+            --foreground: #0f172a;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Global Styles */
+        .stApp {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        /* Hide Streamlit branding */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        header {visibility: hidden;}
+        
+        /* Modern Card Component - Reduced spacing */
+        .modern-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 1px 3px 0 var(--shadow-color);
+            border: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 0.75rem;
+        }
+        
+        .modern-card:hover {
+            box-shadow: 0 8px 16px -4px var(--shadow-color);
+            transform: translateY(-2px);
+        }
+        
+        /* Medical Header - Healthcare blue/teal gradient - Reduced spacing */
+        .medical-header {
+            background: linear-gradient(135deg, #0891b2 0%, #10b981 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+            box-shadow: 0 10px 25px -5px rgba(8, 145, 178, 0.3);
+        }
+        
+        /* Stats Card */
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px 0 var(--shadow-color);
+            border-left: 4px solid var(--primary);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            box-shadow: 0 4px 12px -2px var(--shadow-color);
+            transform: translateX(4px);
+        }
+        
+        /* Button Styles */
+        .stButton>button {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: 600;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px 0 rgba(8, 145, 178, 0.2);
+        }
+        
+        .stButton>button:hover {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+            box-shadow: 0 4px 12px -2px rgba(8, 145, 178, 0.4);
+            transform: translateY(-1px);
+        }
+        
+        /* Input Fields */
+        .stTextInput>div>div>input,
+        .stNumberInput>div>div>input,
+        .stSelectbox>div>div>select {
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            padding: 10px 14px;
+            transition: all 0.2s;
+        }
+        
+        .stTextInput>div>div>input:focus,
+        .stNumberInput>div>div>input:focus,
+        .stSelectbox>div>div>select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.1);
+        }
+        
+        /* Metric Cards */
+        [data-testid="stMetricValue"] {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        /* Status Boxes with proper contrast */
+        .success-box {
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            border-left: 4px solid var(--success);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            color: #065f46;
+        }
+        
+        .error-box {
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+            border-left: 4px solid var(--error);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            color: #991b1b;
+        }
+        
+        .warning-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-left: 4px solid var(--warning);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            color: #92400e;
+        }
+        
+        .info-box {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            border-left: 4px solid var(--info);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            color: #1e3a8a;
+        }
+        
+        /* Sidebar Styling */
+        [data-testid="stSidebar"] {
+            background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+        }
+        
+        [data-testid="stSidebar"] .stMarkdown {
+            color: #e2e8f0;
+        }
+        
+        /* Tab Styling */
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+            background: transparent;
+        }
+        
+        .stTabs [data-baseweb="tab"] {
+            background-color: white;
+            border-radius: 8px 8px 0 0;
+            padding: 12px 24px;
+            font-weight: 600;
+            border: 2px solid var(--border);
+            color: var(--secondary);
+        }
+        
+        .stTabs [aria-selected="true"] {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+        
+        /* File Uploader */
+        [data-testid="stFileUploader"] {
+            background: white;
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            transition: all 0.3s;
+        }
+        
+        [data-testid="stFileUploader"]:hover {
+            border-color: var(--primary);
+            background: #f0f9ff;
+        }
+        
+        /* Expander */
+        .streamlit-expanderHeader {
+            background: white;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-weight: 600;
+            color: var(--foreground);
+        }
+        
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        /* Loading Spinner */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        /* Tooltip Styles */
+        .tooltip-icon {
+            display: inline-block;
+            background: var(--info);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 6px;
+        }
+        
+        /* Progress Bars */
+        .progress-bar {
+            background: #e5e7eb;
+            border-radius: 8px;
+            height: 8px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, var(--primary), var(--accent));
+            height: 100%;
+            border-radius: 8px;
+            transition: width 0.3s ease;
+        }
+        
+        /* Better form labels */
+        .stTextInput label, .stNumberInput label, .stSelectbox label {
+            font-weight: 600 !important;
+            color: var(--foreground) !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .modern-card {
+                padding: 0.75rem;
             }
-                .status-success { background-color: #f0fff4; color: #38a169; }
-                .status-error { background-color: #fff5f5; color: #e53e3e; }
-            </style>
-            """, unsafe_allow_html=True)
-        else:
-            # Fallback inline styles for essential components
-            st.markdown("""
-            <style>
-                .card {
-                    background: white;
-                    border-radius: 10px;
-                    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-                    padding: 1.5rem;
-                    margin-bottom: 1.5rem;
-                }
-                .status-success { background-color: #f0fff4; color: #38a169; }
-                .status-error { background-color: #fff5f5; color: #e53e3e; }
-            </style>
-            """, unsafe_allow_html=True)
+            .medical-header {
+                padding: 1rem;
+            }
+        }
+        </style>
+        """, unsafe_allow_html=True)
         st.session_state.css_loaded = True
 
 # Page configuration
@@ -1083,29 +1349,78 @@ def render_health_metrics():
     # Health trends chart
     st.markdown("### 📈 Health Trends (Last 30 Days)")
     
+    st.markdown("""
+    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 0.75rem; 
+                border-radius: 8px; margin-bottom: 1rem; color: #92400e; font-size: 0.9rem;">
+        <strong>📊 Trend Analysis:</strong> Regular patterns indicate consistency. 
+        Sudden spikes or drops may warrant medical attention.
+    </div>
+    """, unsafe_allow_html=True)
+    
     fig = go.Figure()
+    
+    # Add Blood Pressure trace with better styling
     fig.add_trace(go.Scatter(
         x=health_data['date'],
         y=health_data['systolic_bp'],
         mode='lines+markers',
         name='Systolic BP',
-        line=dict(color='#FF6B6B', width=3)
+        line=dict(color='#ef4444', width=3, shape='spline'),
+        marker=dict(size=8, symbol='circle'),
+        hovertemplate='<b>Systolic BP</b><br>Date: %{x}<br>Value: %{y} mmHg<extra></extra>'
     ))
+    
+    # Add Heart Rate trace with better styling
     fig.add_trace(go.Scatter(
         x=health_data['date'],
         y=health_data['heart_rate'],
         mode='lines+markers',
         name='Heart Rate',
         yaxis='y2',
-        line=dict(color='#4ECDC4', width=3)
+        line=dict(color='#10b981', width=3, shape='spline'),
+        marker=dict(size=8, symbol='diamond'),
+        hovertemplate='<b>Heart Rate</b><br>Date: %{x}<br>Value: %{y} BPM<extra></extra>'
     ))
+    
+    # Add reference lines for healthy ranges
+    fig.add_hline(y=120, line_dash="dash", line_color="orange", 
+                  annotation_text="Elevated BP (120)", annotation_position="right")
+    
     fig.update_layout(
-        title="Blood Pressure & Heart Rate Trends",
+        title="💓 Blood Pressure & Heart Rate Trends",
         xaxis_title="Date",
-        yaxis=dict(title="Blood Pressure (mmHg)", side="left"),
-        yaxis2=dict(title="Heart Rate (BPM)", side="right", overlaying="y"),
-        height=400
+        yaxis=dict(
+            title="Blood Pressure (mmHg)", 
+            side="left",
+            titlefont=dict(color='#ef4444'),
+            tickfont=dict(color='#ef4444')
+        ),
+        yaxis2=dict(
+            title="Heart Rate (BPM)", 
+            side="right", 
+            overlaying="y",
+            titlefont=dict(color='#10b981'),
+            tickfont=dict(color='#10b981')
+        ),
+        height=450,
+        hovermode='x unified',
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='Inter, sans-serif'),
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
     )
+    
+    # Add gridlines
+    fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)')
+    fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='rgba(0,0,0,0.1)')
+    
     st.plotly_chart(fig, use_container_width=True)
 
 def render_data_entry():
@@ -1158,37 +1473,65 @@ def render_health_reports():
         
         with col1:
             avg_systolic = weekly_data['systolic_bp'].mean()
-            st.metric("Avg Systolic BP", f"{avg_systolic:.0f} mmHg")
+            st.metric(
+                "Avg Systolic BP", 
+                f"{avg_systolic:.0f} mmHg",
+                help="Average systolic blood pressure over the last 7 days"
+            )
         
         with col2:
             avg_hr = weekly_data['heart_rate'].mean()
-            st.metric("Avg Heart Rate", f"{avg_hr:.0f} BPM")
+            st.metric(
+                "Avg Heart Rate", 
+                f"{avg_hr:.0f} BPM",
+                help="Average resting heart rate over the last 7 days"
+            )
         
         with col3:
             data_points = len(weekly_data)
             consistency = (data_points / 7) * 100
-            st.metric("Logging Consistency", f"{consistency:.0f}%")
+            st.metric(
+                "Logging Consistency", 
+                f"{consistency:.0f}%",
+                help="Percentage of days with logged health data"
+            )
+            
+        # Visual progress bar for consistency
+        st.markdown("""
+        <div style="margin-top: 1rem;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                <span style="font-weight: 600; color: #0891b2;">🎯 Tracking Progress</span>
+                <span style="color: #64748b;">{:.0f}% Complete</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: {:.0f}%;"></div>
+            </div>
+        </div>
+        """.format(consistency, consistency), unsafe_allow_html=True)
 
 def save_health_data(systolic_bp, diastolic_bp, heart_rate, weight, temperature, blood_sugar, notes):
     """Save new health data entry"""
-    new_entry = {
-        'date': datetime.now(),
-        'systolic_bp': systolic_bp,
-        'diastolic_bp': diastolic_bp,
-        'heart_rate': heart_rate,
-        'weight': weight,
-        'temperature': temperature,
-        'blood_sugar': blood_sugar,
-        'notes': notes
-    }
-    
-    # Add to health log data
-    new_df = pd.DataFrame([new_entry])
-    st.session_state.health_log_data = pd.concat([st.session_state.health_log_data, new_df], ignore_index=True)
-    
-    st.success("✅ Health data saved successfully!")
-    st.balloons()
-    st.rerun()
+    try:
+        new_entry = {
+            'date': datetime.now(),
+            'systolic_bp': systolic_bp,
+            'diastolic_bp': diastolic_bp,
+            'heart_rate': heart_rate,
+            'weight': weight,
+            'temperature': temperature,
+            'blood_sugar': blood_sugar,
+            'notes': notes
+        }
+        
+        # Add to health log data
+        new_df = pd.DataFrame([new_entry])
+        st.session_state.health_log_data = pd.concat([st.session_state.health_log_data, new_df], ignore_index=True)
+        
+        show_success_message("Health data saved successfully!")
+        time.sleep(0.5)  # Brief pause for user to see success
+        st.rerun()
+    except Exception as e:
+        show_error_message(f"Failed to save health data: {str(e)}")
 
 def generate_sample_health_data():
     """Generate sample health data for demonstration"""
@@ -1231,24 +1574,35 @@ def display_connection_status():
             "</div>",
             unsafe_allow_html=True
         )
-        
-        # Display model info if available (cached)
-        model_info = api_client.get_model_info()
-        if model_info:
-            with st.sidebar.expander("Model Information", expanded=False):
-                st.markdown(f"**Model Type:** {model_info.get('model_type', 'N/A')}")
-                st.markdown(f"**Version:** {model_info.get('version', '1.0.0')}")
-                st.markdown(f"**Features:** {model_info.get('feature_count', 'N/A')}")
-                st.markdown(f"**Last Trained:** {model_info.get('last_trained', 'N/A')}")
-            
-    else:
-        st.sidebar.markdown(
-            f"<div class='status-indicator status-error'>"
-            f"<span style='margin-right: 8px;'><i class='fas fa-times-circle'></i></span>"
-            "Connection Error"
-            "</div>",
-            unsafe_allow_html=True
-        )
+
+def show_loading_state(message="Processing..."):
+    """Display a loading state with spinner"""
+    return st.spinner(f"🔄 {message}")
+
+def show_success_message(message, icon="✅"):
+    """Display a success message with animation"""
+    st.success(f"{icon} {message}")
+    if "balloons" not in st.session_state or not st.session_state.balloons:
+        st.balloons()
+        st.session_state.balloons = True
+
+def show_error_message(message, icon="❌", show_details=True):
+    """Display an error message with helpful information"""
+    st.error(f"{icon} {message}")
+    if show_details:
+        with st.expander("🛠️ Troubleshooting Tips"):
+            st.markdown("""
+            **Common Solutions:**
+            - ✓ Check your internet connection
+            - ✓ Ensure the backend server is running
+            - ✓ Verify your login credentials
+            - ✓ Try refreshing the page
+            - ✓ Contact support if the issue persists
+            """)
+
+def show_info_message(message, icon="📌"):
+    """Display an info message"""
+    st.info(f"{icon} {message}")
 
 def main():
     """Main application function with comprehensive error handling"""
@@ -1304,175 +1658,154 @@ python -m uvicorn app:app --reload""")
                 st.rerun()
             return
         
-        # Sidebar navigation with authentication-aware options
+        # Sidebar navigation with modern UI
         render_user_info()  # Display user info in sidebar
         
-        st.sidebar.title("Navigation")
+        # Try to import streamlit-option-menu, fallback to standard radio
+        try:
+            from streamlit_option_menu import option_menu
+            use_modern_menu = True
+        except ImportError:
+            use_modern_menu = False
         
         # Build navigation options based on user role
-        nav_options = [
-            "🏠 Risk Assessment", 
-            "📊 Health Log", 
-            "💊 Prescription Analysis",
-            "🤖 AI Assistant"
-        ]
+        nav_options = ["Medical Consultation", "Document Analysis", "AI Decision Support", "Health Log"]
+        nav_icons = ["mic", "file-text", "robot", "bar-chart"]
         
         # Add role-specific navigation
         if is_doctor() or is_admin():
-            nav_options.extend(["👥 Patient Management"])
+            nav_options.append("Patient Management")
+            nav_icons.append("people")
         
         # Admin-only navigation
         if is_admin():
-            nav_options.extend(["🔧 Admin Panel", "👤 User Management"])
+            nav_options.extend(["Admin Panel", "User Management"])
+            nav_icons.extend(["gear", "person-badge"])
         
         # Add About page
-        nav_options.append("ℹ️ About")
+        nav_options.append("About")
+        nav_icons.append("info-circle")
         
-        # Get the current page from session state or default to first option
-        default_index = nav_options.index(st.session_state.page) if st.session_state.page in nav_options else 0
-        
-        # Update page based on sidebar selection
-        page = st.sidebar.radio(
-            "Go to",
-            nav_options,
-            index=default_index,
-            key="page_selector"
-        )
+        # Modern horizontal navigation menu at the top
+        if use_modern_menu:
+            selected = option_menu(
+                menu_title=None,  # No title for horizontal menu
+                options=nav_options,
+                icons=nav_icons,
+                menu_icon="cast",
+                default_index=0,
+                orientation="horizontal",  # Horizontal navbar
+                styles={
+                    "container": {
+                        "padding": "0!important", 
+                        "background": "linear-gradient(90deg, #0891b2 0%, #06b6d4 100%)",
+                        "border-radius": "12px",
+                        "margin-bottom": "1rem",
+                        "box-shadow": "0 4px 6px rgba(0,0,0,0.1)"
+                    },
+                    "icon": {"color": "white", "font-size": "16px"}, 
+                    "nav-link": {
+                        "font-size": "14px",
+                        "text-align": "center",
+                        "margin": "0px",
+                        "padding": "12px 16px",
+                        "color": "white",
+                        "border-radius": "8px",
+                        "transition": "all 0.3s"
+                    },
+                    "nav-link-selected": {
+                        "background-color": "rgba(255,255,255,0.25)", 
+                        "color": "white",
+                        "font-weight": "600"
+                    },
+                    "nav-link-hover": {
+                        "background-color": "rgba(255,255,255,0.15)"
+                    }
+                }
+            )
+            page = selected
+        else:
+            # Fallback to standard navigation
+            st.sidebar.title("Navigation")
+            page = st.sidebar.radio(
+                "Go to",
+                [f"🏠 {nav_options[0]}", f"📊 {nav_options[1]}", f"🤖 {nav_options[2]}", f"📄 {nav_options[3]}"] + 
+                ([f"👥 {o}" for o in nav_options[4:] if o in ["Patient Management", "Admin Panel", "User Management", "About"]]),
+                key="page_selector"
+            )
         
         # Update session state page
         st.session_state.page = page
         
-        # Display connection status in sidebar
-        display_connection_status()
-        
-        # Add sidebar chatbot (only show if not on main chatbot page)
-        if "🤖 AI Assistant" not in page:
-            render_chatbot_sidebar()
-        
-        # Add logout button in footer
-        if st.session_state.authenticated:
-            if st.sidebar.button("🚪 Logout", use_container_width=True, type="primary", key="main_logout_btn"):
-                from components.auth import logout_user
-                logout_user()
-        
-        # Add professional footer
-        st.sidebar.markdown("---")
-        st.sidebar.markdown("""
-                    <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border-radius: var(--border-radius-md); margin-top: 1rem;">
-                        <p style="margin: 0; font-size: 0.9rem; font-weight: 500;">💚 MyVitals v2.1.0</p>
-                        <p style="margin: 0; font-size: 0.8rem; opacity: 0.8;">Your Personal Health Companion</p>
-                    </div>
-        """, unsafe_allow_html=True)
-        
-        # Page routing with professional headers
-        if "🏠 Risk Assessment" in page:
-            # Professional page header
+        # Hide sidebar for cleaner look with horizontal navbar
+        if use_modern_menu:
             st.markdown("""
-            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
-                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
-                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
-                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
-                    🔬 Advanced Health Risk Assessment
-                </h1>
-                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
-                    Comprehensive health risk assessment with laboratory data integration and AI-powered analysis
-                </p>
-            </div>
+            <style>
+                /* Hide sidebar completely when using top navbar */
+                section[data-testid="stSidebar"] {
+                    display: none;
+                }
+                /* Adjust main content to full width */
+                .main .block-container {
+                    max-width: 100%;
+                    padding-left: 2rem;
+                    padding-right: 2rem;
+                }
+            </style>
             """, unsafe_allow_html=True)
             
-            # Create tabs for different analysis types
-            lab_tab, results_tab = st.tabs(["🔬 Lab Analysis", "📊 Results"])
+            # Add user info and logout in top-right corner
+            col1, col2, col3 = st.columns([6, 2, 1])
+            with col2:
+                st.markdown(f"""
+                <div style="text-align: right; padding: 0.5rem; color: #64748b;">
+                    <small>👤 {st.session_state.get('user_name', 'User')}</small><br>
+                    <small style="color: #94a3b8;">{st.session_state.get('user_role', 'Patient')}</small>
+                </div>
+                """, unsafe_allow_html=True)
+            with col3:
+                if st.button("🚪 Logout", type="secondary", key="top_logout_btn"):
+                    from components.auth import logout_user
+                    logout_user()
+        else:
+            # Display connection status in sidebar
+            display_connection_status()
             
-            with lab_tab:
-                st.markdown("### 🔬 Enhanced Lab-Based Analysis")
-                st.markdown("""
-                **Advanced health risk assessment using comprehensive laboratory data**
-                
-                This enhanced analysis incorporates detailed hematology and blood chemistry values 
-                to provide more accurate and comprehensive health risk predictions.
-                """)
-                
-                # Initialize lab form
-                lab_form = LabPatientInputForm()
-                lab_patient_data = lab_form.render()
-                
-                # Analysis options
-                st.markdown("### Analysis Options")
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    lab_force_llm = st.checkbox("Enable AI Analysis", 
-                                              value=True,
-                                              key="lab_force_llm",
-                                              help="Uses AI for comprehensive lab interpretation and clinical insights")
-                
-                with col2:
-                    lab_analysis_type = st.selectbox("Analysis Type", 
-                                                   ["🔬 Lab Analysis", "📊 Basic Assessment"],
-                                                   key="lab_analysis_type",
-                                                   help="Lab Analysis uses AI for complete medical interpretation")
-                
-                # Show data completeness indicator
-                if lab_patient_data:
-                    basic_fields = ['age', 'sex', 'weight', 'height', 'systolic_bp', 'diastolic_bp']
-                    basic_complete = all(lab_patient_data.get(field) is not None for field in basic_fields)
-                    
-                    lab_fields = ['hemoglobin', 'total_leukocyte_count', 'red_blood_cell_count']
-                    lab_complete = any(lab_patient_data.get(field) is not None for field in lab_fields)
-                    
-                    col_status1, col_status2 = st.columns(2)
-                    with col_status1:
-                        status_icon = "✅" if basic_complete else "⚠️"
-                        st.markdown(f"{status_icon} **Basic Info:** {'Complete' if basic_complete else 'Incomplete'}")
-                    
-                    with col_status2:
-                        status_icon = "✅" if lab_complete else "ℹ️"
-                        st.markdown(f"{status_icon} **Lab Data:** {'Available' if lab_complete else 'Optional'}")
-                
-                # Prediction button - only run analysis when explicitly clicked
-                analyze_clicked = st.button("🔍 Analyze Health Risk", type="primary", key="lab_analyze_btn")
-                
-                if analyze_clicked:
-                    if lab_patient_data:
-                        # Validate minimum required data
-                        required_fields = ['age', 'sex', 'systolic_bp', 'diastolic_bp']
-                        missing_fields = [field for field in required_fields if lab_patient_data.get(field) is None]
-                        
-                        if missing_fields:
-                            st.error(f"❌ Please fill in the following required fields: {', '.join(missing_fields)}")
-                        else:
-                            with st.spinner("Analyzing your health data..."):
-                                try:
-                                    if lab_analysis_type == "🔬 Lab Analysis":
-                                        result = api_client.make_lab_prediction(lab_patient_data, lab_force_llm)
-                                    else:
-                                        result = api_client.make_prediction(lab_patient_data, lab_force_llm)
-                                    
-                                    if result:
-                                        st.session_state['prediction'] = result
-                                        st.session_state['prediction_result'] = result
-                                        st.session_state['patient_data'] = lab_patient_data
-                                        st.session_state['last_analyzed'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                        st.session_state['analysis_type'] = lab_analysis_type
-                                        st.success("✅ Analysis completed! Check the 'Results' tab.")
-                                        # Auto-switch to results tab
-                                        st.session_state['show_results'] = True
-                                    else:
-                                        st.error("❌ Analysis failed. Please check your input data and try again.")
-                                except Exception as e:
-                                    st.error(f"❌ Error during analysis: {str(e)}")
-                    else:
-                        st.warning("⚠️ Please fill in the required basic information to proceed.")
+            # Add logout button in footer
+            if st.session_state.authenticated:
+                if st.sidebar.button("🚪 Logout", use_container_width=True, type="primary", key="main_logout_btn"):
+                    from components.auth import logout_user
+                    logout_user()
             
-            with results_tab:
-                if 'prediction' in st.session_state and st.session_state['prediction']:
-                    display_prediction_results(st.session_state['prediction'], 
-                                             st.session_state.get('analysis_type', 'Unknown'))
-                else:
-                    st.info("🔍 No analysis results yet. Please run an analysis first.")
+            # Add professional footer
+            st.sidebar.markdown("---")
+            st.sidebar.markdown("""
+                        <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, var(--primary-color), var(--accent-color)); color: white; border-radius: var(--border-radius-md); margin-top: 1rem;">
+                            <p style="margin: 0; font-size: 0.9rem; font-weight: 500;">💚 MyVitals v2.1.0</p>
+                            <p style="margin: 0; font-size: 0.8rem; opacity: 0.8;">Your Personal Health Companion</p>
+                        </div>
+        """, unsafe_allow_html=True)
         
-        elif "📊 Health Log" in page:
+        # Clean page name for routing (remove emojis if present)
+        clean_page = page.replace('🏠 ', '').replace('📊 ', '').replace('🤖 ', '').replace('📄 ', '').replace('👥 ', '').strip()
+        
+        # Page routing with professional headers
+        if clean_page == "Medical Consultation" or "Medical Consultation" in page:
+            # Import and show medical consultation page
+            try:
+                from pages.medical_consultation import show_medical_consultation
+                show_medical_consultation()
+            except ImportError as e:
+                st.error(f"Failed to load Medical Consultation module: {e}")
+                st.info("Please ensure all consultation modules are properly installed.")
+        
+        elif clean_page == "Risk Assessment" or "Risk Assessment" in page:
+            # Redirect to Medical Consultation
+            st.info("Risk Assessment has been replaced with Medical Consultation")
+            st.session_state.page = "Medical Consultation"
+            st.rerun()
+        
+        elif clean_page == "Health Log" or "Health Log" in page:
             # Professional page header
             st.markdown("""
             <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
@@ -1488,58 +1821,697 @@ python -m uvicorn app:app --reload""")
             """, unsafe_allow_html=True)
             render_health_log_page()
         
-        elif "📝 Medical Report Analysis" in page:
-            # Professional page header
+        elif clean_page == "AI Decision Support" or "AI Decision Support" in page:
+            # Clean minimal interface
+            try:
+                from pages.ai_decision_support import AIDecisionDashboard
+                dashboard = AIDecisionDashboard()
+                dashboard.run()
+            except ImportError as e:
+                st.error(f"AI Decision Support module not available: {str(e)}")
+                st.info("Please ensure the AI Decision Support module is properly installed.")
+            except Exception as e:
+                st.error(f"Error loading AI Decision Support: {str(e)}")
+                with st.expander("Error Details"):
+                    st.code(str(e))
+        
+        elif clean_page == "Document Analysis" or "Document Analysis" in page or "📄 Document Analysis" in page:
+            # Add collapsible sidebar for cleaner view
             st.markdown("""
-            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
-                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
-                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
-                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
-                    📝 Medical Report Analysis
+            <style>
+                section[data-testid="stSidebar"] {
+                    width: 80px !important;
+                    min-width: 80px !important;
+                }
+                section[data-testid="stSidebar"]:hover {
+                    width: 280px !important;
+                    min-width: 280px !important;
+                }
+                section[data-testid="stSidebar"] > div {
+                    opacity: 0;
+                    transition: opacity 0.3s;
+                }
+                section[data-testid="stSidebar"]:hover > div {
+                    opacity: 1;
+                }
+            </style>
+            """, unsafe_allow_html=True)
+            
+            # Modern gradient header
+            st.markdown("""
+            <div class="medical-header">
+                <h1 style="margin: 0; font-size: 2.5rem; font-weight: 700; color: white;">
+                    📄 AI-Powered Document Analysis
                 </h1>
-                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
-                    Upload and analyze medical reports with AI-powered insights and recommendations
+                <p style="margin: 0.75rem 0 0 0; font-size: 1.15rem; line-height: 1.6; color: rgba(255,255,255,0.95);">
+                    Upload medical reports and prescriptions for instant AI analysis with clinical insights
                 </p>
             </div>
             """, unsafe_allow_html=True)
             
-            # Initialize the medical report analyzer
-            analyzer = MedicalReportAnalyzer(api_client)
-            analyzer.render()
-        
-        elif "💊 Prescription Analysis" in page:
-            # Professional page header
-            st.markdown("""
-            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
-                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
-                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
-                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
-                    💊 Prescription Analysis
-                </h1>
-                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
-                    AI-powered prescription analysis and medication interaction checker
+            # Create modern tabs
+            doc_tab1, doc_tab2 = st.tabs(["🏥 **Medical Reports**", "💊 **Prescriptions**"])
+            
+            with doc_tab1:
+                st.markdown('<div class="modern-card">', unsafe_allow_html=True)
+                st.markdown("### 🏥 Medical Report Analysis")
+                st.markdown("""
+                <p style="color: #64748b; font-size: 0.95rem; margin-bottom: 1.5rem;">
+                    Upload lab reports, diagnostic results, or any medical document for comprehensive AI analysis.
+                    Our system extracts key findings, metrics, and provides actionable recommendations.
                 </p>
-            </div>
-            """, unsafe_allow_html=True)
-            render_prescription_chatbot()
+                """, unsafe_allow_html=True)
+                
+                # Patient name input with modern styling
+                patient_name = st.text_input(
+                    "👤 Patient Name (Optional)", 
+                    key="mr_patient_name",
+                    placeholder="Enter patient name for personalized analysis"
+                )
+                
+                # Modern file upload section
+                st.markdown("---")
+                uploaded_file = st.file_uploader(
+                    "📤 Upload Medical Report", 
+                    type=['pdf', 'png', 'jpg', 'jpeg', 'txt'], 
+                    key="medical_report",
+                    help="Supported: PDF, PNG, JPG, JPEG, TXT (Max 200MB)"
+                )
+                
+                if uploaded_file:
+                    # File info card
+                    st.markdown("""
+                    <div class="info-box" style="margin: 1rem 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>📄 {}</strong><br>
+                                <span style="color: #64748b;">Size: {:.1f} KB</span>
+                            </div>
+                        </div>
+                    </div>
+                    """.format(uploaded_file.name, uploaded_file.size / 1024), unsafe_allow_html=True)
+                    
+                    # Analyze button
+                    if st.button("🔍 Analyze Document", use_container_width=True, type="primary"):
+                        with st.spinner("🤖 AI is analyzing your document..."):
+                            try:
+                                # Prepare file for upload
+                                files = {
+                                    'file': (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)
+                                }
+                                data = {}
+                                if patient_name:
+                                    data['patient_name'] = patient_name
+                                
+                                # Call API
+                                result = api_client._make_request(
+                                    'POST',
+                                    '/document/upload/medical-report',
+                                    files=files,
+                                    data=data
+                                )
+                                
+                                if result:
+                                    # Success message
+                                    st.markdown("""
+                                    <div class="success-box" style="margin: 1.5rem 0;">
+                                        <h4 style="margin: 0; color: #10b981;">✅ Analysis Complete!</h4>
+                                        <p style="margin: 0.5rem 0 0 0; color: #059669;">Your document has been analyzed successfully.</p>
+                                    </div>
+                                    """, unsafe_allow_html=True)
+                                    
+                                    # Display AI analysis in organized tabs
+                                    analysis = result.get('analysis', {})
+                                    if analysis:
+                                        # Create navigation tabs for better organization
+                                        analysis_tabs = st.tabs([
+                                            "🏥 Diagnosis", 
+                                            "📊 Test Results", 
+                                            "💡 What You Need To Do",
+                                            "⚠️ Warnings",
+                                            "🥗 Lifestyle & Diet Plan",
+                                            "📄 Full Report"
+                                        ])
+                                        
+                                        # Tab 1: Diagnosis
+                                        with analysis_tabs[0]:
+                                            # Diagnosis Card
+                                            if analysis.get('diagnosis'):
+                                                diagnosis = analysis['diagnosis']
+                                                severity_colors = {
+                                                    'mild': '#10b981',
+                                                    'moderate': '#f59e0b', 
+                                                    'severe': '#ef4444',
+                                                    'critical': '#dc2626'
+                                                }
+                                                severity = diagnosis.get('severity', 'unknown').lower()
+                                                severity_color = severity_colors.get(severity, '#64748b')
+                                                
+                                                st.markdown(f"""
+                                                <div class="modern-card" style="background: linear-gradient(135deg, #fef3c7 0%, #fed7aa 100%); 
+                                                            border-left: 6px solid {severity_color}; margin: 0.75rem 0; padding: 1.25rem;">
+                                                    <h2 style="margin: 0 0 0.75rem 0; color: #78350f; font-size: 1.5rem;">
+                                                        🏥 Medical Condition Identified
+                                                    </h2>
+                                                    <div style="background: white; padding: 1.25rem; border-radius: 8px; margin-bottom: 0.75rem;">
+                                                        <div style="font-size: 1.5rem; font-weight: 700; color: {severity_color}; margin-bottom: 0.5rem;">
+                                                            {diagnosis.get('primary_condition', 'No specific condition identified')}
+                                                        </div>
+                                                        {f'<div style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">ICD-10: {diagnosis.get("icd10_code", "Not specified")}</div>' if diagnosis.get('icd10_code') else ''}
+                                                        <div style="display: inline-block; background: {severity_color}; color: white; 
+                                                                    padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; margin-right: 1rem;">
+                                                            Severity: {severity.upper()}
+                                                        </div>
+                                                        <div style="display: inline-block; background: #e2e8f0; color: #334155; 
+                                                                    padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600;">
+                                                            Confidence: {diagnosis.get('confidence', 'medium').upper()}
+                                                        </div>
+                                                    </div>
+                                                    {f'''<div style="background: white; padding: 1rem; border-radius: 8px;">
+                                                        <strong style="color: #78350f;">Additional Conditions:</strong>
+                                                        <ul style="margin: 0.5rem 0 0 1.5rem; color: #92400e;">
+                                                            {"".join([f"<li>{cond}</li>" for cond in diagnosis.get('additional_conditions', [])])}
+                                                        </ul>
+                                                    </div>''' if diagnosis.get('additional_conditions') else ''}
+                                                </div>
+                                                """, unsafe_allow_html=True)
+                                            
+                                            # Clinical Interpretation
+                                            if analysis.get('clinical_interpretation'):
+                                                st.markdown(f"""
+                                                <div class="info-box" style="margin: 0.75rem 0; padding: 1rem;">
+                                                    <h4 style="margin: 0 0 0.5rem 0; color: #1e3a8a; font-size: 1.1rem;">🔬 Clinical Interpretation</h4>
+                                                    <p style="margin: 0; font-size: 1rem; line-height: 1.6; color: #1e40af;">
+                                                        {analysis['clinical_interpretation']}
+                                                    </p>
+                                                </div>
+                                                """, unsafe_allow_html=True)
+                                            
+                                            # Executive Summary
+                                            if analysis.get('summary'):
+                                                st.markdown('<div class="modern-card" style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); padding: 1.25rem; margin: 0.75rem 0;">', unsafe_allow_html=True)
+                                                st.markdown('<h3 style="margin: 0 0 0.75rem 0; color: #0369a1; font-size: 1.25rem;">📝 Executive Summary</h3>', unsafe_allow_html=True)
+                                                # Use st.write for proper text rendering without encoding issues
+                                                st.markdown('<div style="background: white; padding: 1rem; border-radius: 8px;">', unsafe_allow_html=True)
+                                                st.write(analysis['summary'])
+                                                st.markdown('</div></div>', unsafe_allow_html=True)
+                                            
+                                            # Disease Indicators
+                                            if analysis.get('disease_indicators'):
+                                                st.markdown('<div class="modern-card" style="margin: 0.75rem 0; padding: 1rem;">', unsafe_allow_html=True)
+                                                st.markdown("<h4 style='margin: 0 0 0.75rem 0; font-size: 1.1rem;'>🧬 Disease Indicators & Biomarkers</h4>", unsafe_allow_html=True)
+                                                for indicator in analysis['disease_indicators']:
+                                                    st.markdown(f"""
+                                                    <div style="padding: 0.6rem; margin: 0.4rem 0; background: #fef3c7; 
+                                                                border-left: 4px solid #f59e0b; border-radius: 6px; font-size: 0.95rem;">
+                                                        🔸 {indicator}
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                                st.markdown('</div>', unsafe_allow_html=True)
+                                        
+                                        # Tab 2: Test Results & Metrics
+                                        with analysis_tabs[1]:
+                                            st.markdown("### 📊 Your Test Results")
+                                            
+                                            # Key Findings
+                                            if analysis.get('key_findings'):
+                                                st.markdown('<div class="modern-card">', unsafe_allow_html=True)
+                                                st.markdown("#### 🔍 Key Clinical Findings")
+                                                for i, finding in enumerate(analysis['key_findings'], 1):
+                                                    st.markdown(f"""
+                                                    <div style="padding: 0.75rem; margin: 0.5rem 0; background: #f8fafc; 
+                                                                border-left: 4px solid #0ea5e9; border-radius: 6px;">
+                                                        <strong style="color: #0369a1;">{i}.</strong> {finding}
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                                st.markdown('</div>', unsafe_allow_html=True)
+                                            
+                                            # Metrics Grid
+                                            if analysis.get('metrics'):
+                                                st.markdown("#### 📈 Laboratory Values")
+                                                cols = st.columns(min(3, len(analysis['metrics'])))
+                                                for idx, (metric, value) in enumerate(analysis['metrics'].items()):
+                                                    with cols[idx % 3]:
+                                                        st.markdown("""
+                                                        <div class="stat-card">
+                                                            <div style="font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+                                                                {}
+                                                            </div>
+                                                            <div style="font-size: 1.25rem; font-weight: 700; color: #0ea5e9; margin-top: 0.5rem; line-height: 1.4;">
+                                                                {}
+                                                            </div>
+                                                        </div>
+                                                        """.format(metric.replace('_', ' ').title(), value), unsafe_allow_html=True)
+                                        
+                                        # Tab 3: What You Need To Do (Lifestyle & Actions)
+                                        with analysis_tabs[2]:
+                                            st.markdown("### 💡 Your Action Plan")
+                                            st.markdown("""
+                                            <div class="info-box">
+                                                <p style="margin: 0; font-size: 0.95rem;">
+                                                    Follow these recommendations to manage your condition and improve your health.
+                                                </p>
+                                            </div>
+                                            """, unsafe_allow_html=True)
+                                            
+                                            # Categorize recommendations
+                                            if analysis.get('recommendations'):
+                                                recs = analysis['recommendations']
+                                                
+                                                # Lifestyle recommendations
+                                                lifestyle_recs = [r for r in recs if any(keyword in r.lower() for keyword in ['diet', 'exercise', 'lifestyle', 'reduce', 'limit', 'avoid', 'increase', 'weight', 'activity', 'sleep', 'stress', 'smoking', 'alcohol'])]
+                                                
+                                                # Medical recommendations
+                                                medical_recs = [r for r in recs if any(keyword in r.lower() for keyword in ['medication', 'therapy', 'initiate', 'start', 'drug', 'prescription', 'doctor', 'physician', 'specialist'])]
+                                                
+                                                # Follow-up recommendations
+                                                followup_recs = [r for r in recs if any(keyword in r.lower() for keyword in ['follow-up', 'test', 'monitor', 'repeat', 'check', 'recheck', 'visit', 'appointment'])]
+                                                
+                                                # Other recommendations
+                                                other_recs = [r for r in recs if r not in lifestyle_recs + medical_recs + followup_recs]
+                                                
+                                                # Display Lifestyle Changes
+                                                if lifestyle_recs:
+                                                    st.markdown('<div class="modern-card" style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);">', unsafe_allow_html=True)
+                                                    st.markdown("#### 🥗 Lifestyle Changes")
+                                                    st.markdown('<div style="background: white; padding: 1rem; border-radius: 8px;">', unsafe_allow_html=True)
+                                                    for rec in lifestyle_recs:
+                                                        st.markdown(f"""
+                                                        <div style="padding: 0.75rem; margin: 0.5rem 0; background: #ecfdf5; 
+                                                                    border-left: 4px solid #10b981; border-radius: 6px;">
+                                                            <strong style="color: #059669;">✓</strong> {rec}
+                                                        </div>
+                                                        """, unsafe_allow_html=True)
+                                                    st.markdown('</div></div>', unsafe_allow_html=True)
+                                                
+                                                # Display Medical Actions
+                                                if medical_recs:
+                                                    st.markdown('<div class="modern-card" style="background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);">', unsafe_allow_html=True)
+                                                    st.markdown("#### 💊 Medical Treatment")
+                                                    st.markdown('<div style="background: white; padding: 1rem; border-radius: 8px;">', unsafe_allow_html=True)
+                                                    for rec in medical_recs:
+                                                        st.markdown(f"""
+                                                        <div style="padding: 0.75rem; margin: 0.5rem 0; background: #eff6ff; 
+                                                                    border-left: 4px solid #3b82f6; border-radius: 6px;">
+                                                            <strong style="color: #1e40af;">💊</strong> {rec}
+                                                        </div>
+                                                        """, unsafe_allow_html=True)
+                                                    st.markdown('</div></div>', unsafe_allow_html=True)
+                                                
+                                                # Display Follow-up Actions
+                                                if followup_recs:
+                                                    st.markdown('<div class="modern-card" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);">', unsafe_allow_html=True)
+                                                    st.markdown("#### 📅 Follow-up & Monitoring")
+                                                    st.markdown('<div style="background: white; padding: 1rem; border-radius: 8px;">', unsafe_allow_html=True)
+                                                    for rec in followup_recs:
+                                                        st.markdown(f"""
+                                                        <div style="padding: 0.75rem; margin: 0.5rem 0; background: #fefce8; 
+                                                                    border-left: 4px solid #f59e0b; border-radius: 6px;">
+                                                            <strong style="color: #d97706;">📅</strong> {rec}
+                                                        </div>
+                                                        """, unsafe_allow_html=True)
+                                                    st.markdown('</div></div>', unsafe_allow_html=True)
+                                                
+                                                # Display Other Recommendations
+                                                if other_recs:
+                                                    st.markdown('<div class="modern-card">', unsafe_allow_html=True)
+                                                    st.markdown("#### ℹ️ Additional Recommendations")
+                                                    for rec in other_recs:
+                                                        st.markdown(f"""
+                                                        <div class="success-box" style="margin: 0.5rem 0;">
+                                                            <strong style="color: #059669;">✓</strong> {rec}
+                                                        </div>
+                                                        """, unsafe_allow_html=True)
+                                                    st.markdown('</div>', unsafe_allow_html=True)
+                                            else:
+                                                st.info("No specific recommendations provided in the analysis.")
+                                        
+                                        # Tab 4: Warnings & Concerns
+                                        with analysis_tabs[3]:
+                                            st.markdown("### ⚠️ Important Warnings")
+                                            
+                                            # Concerns/Alerts
+                                            if analysis.get('concerns') or analysis.get('alerts'):
+                                                concerns = analysis.get('concerns', []) + analysis.get('alerts', [])
+                                                st.markdown('<div class="modern-card">', unsafe_allow_html=True)
+                                                st.markdown("#### ⚠️ Areas Requiring Attention")
+                                                for concern in concerns:
+                                                    st.markdown(f"""
+                                                    <div class="warning-box" style="margin: 0.75rem 0;">
+                                                        <strong style="color: #d97706;">⚠️</strong> {concern}
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                                st.markdown('</div>', unsafe_allow_html=True)
+                                            else:
+                                                st.success("✅ No major concerns identified in the analysis.")
+                                        
+                                        # Tab 5: Lifestyle & Diet Plan
+                                        with analysis_tabs[4]:
+                                            lifestyle_plan = result.get('lifestyle_diet_plan')
+                                            if lifestyle_plan:
+                                                st.markdown("### 🥗 Personalized Lifestyle & Diet Plan")
+                                                st.info("Based on your medical report analysis, here's a personalized health plan:")
+                                                
+                                                # Import display function from ai_decision_support page
+                                                try:
+                                                    from pages.ai_decision_support import AIDecisionDashboard
+                                                    ai_page = AIDecisionDashboard()
+                                                    ai_page.display_lifestyle_diet_plan(lifestyle_plan)
+                                                except Exception as e:
+                                                    st.error(f"Error displaying lifestyle plan: {e}")
+                                                    
+                                                    # Fallback display
+                                                    if lifestyle_plan.get('diet_plan'):
+                                                        with st.expander("🍽️ Diet Plan", expanded=True):
+                                                            diet = lifestyle_plan['diet_plan']
+                                                            st.write(f"**Approach:** {diet.get('approach')}")
+                                                            st.write(f"**Daily Calories:** {diet.get('daily_calories')} kcal")
+                                                            
+                                                    if lifestyle_plan.get('exercise_plan'):
+                                                        with st.expander("🏃 Exercise Plan", expanded=True):
+                                                            exercise = lifestyle_plan['exercise_plan']
+                                                            st.write(f"**Weekly Target:** {exercise.get('weekly_target')}")
+                                                            
+                                                    if lifestyle_plan.get('lifestyle_modifications'):
+                                                        with st.expander("🌟 Lifestyle Changes", expanded=True):
+                                                            for mod in lifestyle_plan['lifestyle_modifications'][:5]:
+                                                                st.write(f"• {mod}")
+                                            else:
+                                                st.info("Lifestyle & Diet Plan not available for this report. Complete medical data required.")
+                                        
+                                        # Tab 6: Full Report
+                                        with analysis_tabs[5]:
+                                            st.markdown("### 📄 Complete Analysis Report")
+                                            
+                                            # Summary if available
+                                            if analysis.get('summary'):
+                                                st.markdown('<div class="modern-card">', unsafe_allow_html=True)
+                                                st.markdown("#### Executive Summary")
+                                                st.write(analysis['summary'])
+                                                st.markdown('</div>', unsafe_allow_html=True)
+                                            
+                                            # Full JSON view
+                                            with st.expander("🔍 View Complete JSON Data", expanded=False):
+                                                st.json(analysis)
+                                            
+                                            # Extracted text
+                                            with st.expander("📄 View Raw Extracted Text", expanded=False):
+                                                st.text_area(
+                                                    "Extracted Text", 
+                                                    value=result.get('extracted_text', 'N/A'), 
+                                                    height=300, 
+                                                    key="extracted_mr", 
+                                                    disabled=True
+                                                )
+                                    else:
+                                        st.markdown("""
+                                        <div class="warning-box">
+                                            <strong>⚠️ Analysis Incomplete</strong><br>
+                                            The document was processed but AI analysis data is incomplete.
+                                        </div>
+                                        """, unsafe_allow_html=True)
+                                
+                            except Exception as e:
+                                st.markdown(f"""
+                                <div class="error-box">
+                                    <h4 style="margin: 0; color: #dc2626;">❌ Analysis Error</h4>
+                                    <p style="margin: 0.5rem 0 0 0; color: #991b1b;">{str(e)}</p>
+                                </div>
+                                """, unsafe_allow_html=True)
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+                
+                # Show previous analyses
+                st.markdown("---")
+                st.markdown("### 📚 Previous Analyses")
+                if st.button("🔄 Load Previous Reports", key="load_mr"):
+                    try:
+                        results = api_client._make_request('GET', '/document/list')
+                        if results:
+                            medical_reports = [r for r in results if r.get('document_type') == 'medical_report']
+                            if medical_reports:
+                                for report in medical_reports[:5]:  # Show last 5
+                                    with st.expander(f"📄 {report.get('filename', 'Unknown')} - {report.get('created_at', '')}"):
+                                        st.write(f"**Patient:** {report.get('patient_name', 'N/A')}")
+                                        if report.get('summary'):
+                                            st.write(f"**Summary:** {report['summary']}")
+                            else:
+                                st.info("No previous medical reports found.")
+                    except Exception as e:
+                        st.error(f"Error loading reports: {str(e)}")
+            
+            with doc_tab2:
+                st.markdown("### 💊 Prescription Analysis")
+                st.markdown("Upload prescriptions for AI-powered drug information and interaction analysis.")
+                
+                # Patient name input
+                patient_name_rx = st.text_input("Patient Name (Optional)", key="rx_patient_name")
+                
+                # File upload
+                uploaded_rx = st.file_uploader(
+                    "Upload Prescription", 
+                    type=['pdf', 'png', 'jpg', 'jpeg', 'txt'], 
+                    key="prescription",
+                    help="Supported formats: PDF, PNG, JPG, JPEG, TXT"
+                )
+                
+                if uploaded_rx:
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.info(f"📄 Selected: {uploaded_rx.name} ({uploaded_rx.size / 1024:.1f} KB)")
+                    with col2:
+                        analyze_rx_btn = st.button("🔍 Analyze", use_container_width=True, type="primary", key="analyze_rx")
+                    
+                    if analyze_rx_btn:
+                        with st.spinner("🤖 Analyzing prescription..."):
+                            try:
+                                # Prepare file for upload
+                                files = {
+                                    'file': (uploaded_rx.name, uploaded_rx.getvalue(), uploaded_rx.type)
+                                }
+                                data = {}
+                                if patient_name_rx:
+                                    data['patient_name'] = patient_name_rx
+                                
+                                # Call API
+                                result = api_client._make_request(
+                                    'POST',
+                                    '/document/upload/prescription',
+                                    files=files,
+                                    data=data
+                                )
+                                
+                                if result:
+                                    st.success("✅ Analysis Complete!")
+                                    
+                                    # Display analysis results with professional mini navbar
+                                    st.markdown("---")
+                                    
+                                    # Display AI analysis with tab navigation
+                                    analysis = result.get('analysis', {})
+                                    if analysis:
+                                        # Custom CSS for professional card design
+                                        st.markdown("""
+                                        <style>
+                                        .medication-card {
+                                            background: #f8f9fa;
+                                            border: none;
+                                            padding: 24px;
+                                            margin-bottom: 20px;
+                                            border-radius: 12px;
+                                            transition: all 0.2s;
+                                        }
+                                        .medication-card:hover {
+                                            background: #e9ecef;
+                                        }
+                                        .medication-header {
+                                            color: #1a1a1a;
+                                            font-size: 20px;
+                                            font-weight: 600;
+                                            margin-bottom: 16px;
+                                            padding-bottom: 12px;
+                                            border-bottom: 2px solid #dee2e6;
+                                        }
+                                        .info-row {
+                                            display: flex;
+                                            gap: 24px;
+                                            margin-top: 12px;
+                                        }
+                                        .info-item {
+                                            flex: 1;
+                                        }
+                                        .info-label {
+                                            color: #6c757d;
+                                            font-size: 13px;
+                                            font-weight: 600;
+                                            text-transform: uppercase;
+                                            letter-spacing: 0.5px;
+                                            margin-bottom: 4px;
+                                        }
+                                        .info-value {
+                                            color: #212529;
+                                            font-size: 16px;
+                                            font-weight: 500;
+                                        }
+                                        .alert-box {
+                                            padding: 16px 20px;
+                                            border-radius: 8px;
+                                            margin-bottom: 12px;
+                                            border-left: 4px solid;
+                                            font-size: 15px;
+                                        }
+                                        .alert-error {
+                                            background: #fff5f5;
+                                            border-left-color: #e53e3e;
+                                            color: #742a2a;
+                                        }
+                                        .alert-info {
+                                            background: #f0f9ff;
+                                            border-left-color: #3b82f6;
+                                            color: #1e3a8a;
+                                        }
+                                        .alert-success {
+                                            background: #f0fdf4;
+                                            border-left-color: #22c55e;
+                                            color: #14532d;
+                                        }
+                                        </style>
+                                        """, unsafe_allow_html=True)
+                                        
+                                        # Create tabs for each section
+                                        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+                                            "💊 Medications", 
+                                            "⚠️ Interactions", 
+                                            "🛡️ Safety", 
+                                            "📊 Dosage", 
+                                            "💡 Recommendations", 
+                                            "📄 Source Text"
+                                        ])
+                                        
+                                        # Tab 1: Medications
+                                        with tab1:
+                                            if analysis.get('medications'):
+                                                meds = analysis['medications']
+                                                if meds and isinstance(meds[0], dict):
+                                                    for i, med in enumerate(meds, 1):
+                                                        st.markdown(f"""
+                                                        <div class="medication-card">
+                                                            <div class="medication-header">{i}. {med.get('name', 'Unknown Medication')}</div>
+                                                            <div class="info-row">
+                                                                <div class="info-item">
+                                                                    <div class="info-label">Purpose</div>
+                                                                    <div class="info-value">{med.get('indication', 'Not specified')}</div>
+                                                                </div>
+                                                                <div class="info-item">
+                                                                    <div class="info-label">Dosage</div>
+                                                                    <div class="info-value">{med.get('dosage', 'N/A')}</div>
+                                                                </div>
+                                                                <div class="info-item">
+                                                                    <div class="info-label">Frequency</div>
+                                                                    <div class="info-value">{med.get('frequency', 'N/A')}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        """, unsafe_allow_html=True)
+                                                else:
+                                                    for i, med in enumerate(meds, 1):
+                                                        st.markdown(f"""
+                                                        <div class="medication-card">
+                                                            <strong>{i}.</strong> {med}
+                                                        </div>
+                                                        """, unsafe_allow_html=True)
+                                            else:
+                                                st.info("ℹ️ No medications identified in this prescription")
+                                        
+                                        # Tab 2: Drug Interactions
+                                        with tab2:
+                                            if analysis.get('interactions'):
+                                                for interaction in analysis['interactions']:
+                                                    st.markdown(f"""
+                                                    <div class="alert-box alert-error">
+                                                        <strong>⚠️ Warning:</strong> {interaction}
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                            else:
+                                                st.markdown("""
+                                                <div class="alert-box alert-success">
+                                                    <strong>✓ No significant drug interactions detected</strong>
+                                                </div>
+                                                """, unsafe_allow_html=True)
+                                        
+                                        # Tab 3: Safety Information
+                                        with tab3:
+                                            if analysis.get('safety_info'):
+                                                for info in analysis['safety_info']:
+                                                    st.markdown(f"""
+                                                    <div class="alert-box alert-info">
+                                                        ℹ️ {info}
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                            else:
+                                                st.info("ℹ️ No specific safety warnings")
+                                        
+                                        # Tab 4: Dosage Information
+                                        with tab4:
+                                            if analysis.get('dosages'):
+                                                for dosage in analysis['dosages']:
+                                                    st.markdown(f"""
+                                                    <div class="medication-card">
+                                                        • {dosage}
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                            else:
+                                                st.info("ℹ️ Refer to individual medication dosages in the Medications tab")
+                                        
+                                        # Tab 5: Recommendations
+                                        with tab5:
+                                            if analysis.get('recommendations'):
+                                                for rec in analysis['recommendations']:
+                                                    st.markdown(f"""
+                                                    <div class="alert-box alert-success">
+                                                        ✓ {rec}
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                            else:
+                                                st.info("ℹ️ Follow your physician's instructions")
+                                        
+                                        # Tab 6: Extracted Text
+                                        with tab6:
+                                            st.text_area("Source Text from Prescription", value=result.get('extracted_text', 'No text extracted'), height=400, disabled=True)
+                                            
+                                            if analysis.get('details'):
+                                                with st.expander("📋 Technical Details (JSON)", expanded=False):
+                                                    st.json(analysis['details'])
+                                    else:
+                                        st.warning("No AI analysis available. The prescription was processed but analysis data is missing.")
+                                    
+                                    # Show extracted text only in collapsed section
+                                    with st.expander("📄 View Extracted Text", expanded=False):
+                                        st.text_area("Extracted Text", value=result.get('extracted_text', 'N/A'), height=200, key="extracted_rx", disabled=True)
+                                
+                            except Exception as e:
+                                st.error(f"❌ Error analyzing prescription: {str(e)}")
+                
+                # Show previous analyses
+                st.markdown("---")
+                st.markdown("### 📚 Previous Analyses")
+                if st.button("🔄 Load Previous Prescriptions", key="load_rx"):
+                    try:
+                        results = api_client._make_request('GET', '/document/list')
+                        if results:
+                            prescriptions = [r for r in results if r.get('document_type') == 'prescription']
+                            if prescriptions:
+                                for rx in prescriptions[:5]:  # Show last 5
+                                    with st.expander(f"💊 {rx.get('filename', 'Unknown')} - {rx.get('created_at', '')}"):
+                                        st.write(f"**Patient:** {rx.get('patient_name', 'N/A')}")
+                                        if rx.get('summary'):
+                                            st.write(f"**Summary:** {rx['summary']}")
+                            else:
+                                st.info("No previous prescriptions found.")
+                    except Exception as e:
+                        st.error(f"Error loading prescriptions: {str(e)}")
         
-        elif "🤖 AI Assistant" in page:
-            # Professional page header
-            st.markdown("""
-            <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
-                        padding: 2rem; border-radius: var(--border-radius-lg); margin-bottom: 2rem; 
-                        border: 1px solid var(--border-color); box-shadow: var(--shadow-sm);">
-                <h1 style="color: var(--primary-color); margin: 0; font-size: 2.25rem; font-weight: 700;">
-                    🤖 AI Health Assistant
-                </h1>
-                <p style="color: var(--text-secondary); margin: 0.5rem 0 0 0; font-size: 1.1rem; line-height: 1.5;">
-                    Intelligent healthcare assistant for personalized health guidance and support
-                </p>
-            </div>
-            """, unsafe_allow_html=True)
-            render_chatbot_interface()
-        
-        elif "👥 Patient Management" in page:
+        elif clean_page == "Patient Management" or "Patient Management" in page:
             if is_doctor():
                 # Professional page header
                 st.markdown("""
@@ -1567,7 +2539,7 @@ python -m uvicorn app:app --reload""")
                 </div>
                 """, unsafe_allow_html=True)
         
-        elif "🔧 Admin Panel" in page:
+        elif clean_page == "Admin Panel" or "Admin Panel" in page:
             if is_admin():
                 # Professional page header
                 st.markdown("""
@@ -1595,7 +2567,7 @@ python -m uvicorn app:app --reload""")
                 </div>
                 """, unsafe_allow_html=True)
         
-        elif "👤 User Management" in page:
+        elif clean_page == "User Management" or "User Management" in page:
             if is_admin():
                 # Professional page header
                 st.markdown("""
@@ -1623,7 +2595,7 @@ python -m uvicorn app:app --reload""")
                 </div>
                 """, unsafe_allow_html=True)
         
-        elif "ℹ️ About" in page:
+        elif clean_page == "About" or "About" in page:
             # Professional page header
             st.markdown("""
             <div style="background: linear-gradient(135deg, var(--background-primary) 0%, var(--secondary-color) 100%); 
@@ -1678,7 +2650,8 @@ python -m uvicorn app:app --reload""")
                         <div>
                             <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">🤖 AI & Machine Learning</h4>
                             <ul style="color: var(--text-secondary); margin: 0; padding-left: 1.5rem;">
-                                <li>Scikit-learn algorithms</li>
+                                <li>OpenAI Whisper (Speech-to-Text)</li>
+                                <li>Facebook BART (Summarization)</li>
                                 <li>Random Forest & Gradient Boosting</li>
                                 <li>Natural language processing</li>
                                 <li>Predictive analytics</li>
@@ -1710,14 +2683,6 @@ python -m uvicorn app:app --reload""")
                         <div style="margin-bottom: 1rem;">
                             <h4 style="color: var(--accent-color); margin: 0 0 0.25rem 0; font-size: 1rem;">📊 Health Analytics</h4>
                             <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Comprehensive health tracking</p>
-                        </div>
-                        <div style="margin-bottom: 1rem;">
-                            <h4 style="color: var(--accent-color); margin: 0 0 0.25rem 0; font-size: 1rem;">💊 Prescription Analysis</h4>
-                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Medication interaction checker</p>
-                        </div>
-                        <div style="margin-bottom: 1rem;">
-                            <h4 style="color: var(--accent-color); margin: 0 0 0.25rem 0; font-size: 1rem;">🤖 AI Assistant</h4>
-                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.9rem;">Intelligent health guidance</p>
                         </div>
                         <div style="margin-bottom: 1rem;">
                             <h4 style="color: var(--accent-color); margin: 0 0 0.25rem 0; font-size: 1rem;">🏥 Professional Tools</h4>

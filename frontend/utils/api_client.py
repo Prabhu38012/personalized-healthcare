@@ -11,7 +11,7 @@ from .caching import cached_health_check, cached_model_info
 class APIClient:
     """General API client for backend communication"""
     
-    def __init__(self, base_url="http://localhost:8002"):
+    def __init__(self, base_url="http://localhost:8000"):
         self.base_url = base_url
         self.auth_headers = {}
     
@@ -23,7 +23,7 @@ class APIClient:
 class HealthcareAPI:
     """Healthcare API client for making requests to the backend"""
     
-    def __init__(self, base_url="http://localhost:8002/api"):
+    def __init__(self, base_url="http://localhost:8000/api"):
         self.base_url = base_url
         self.auth_headers = {}
     
@@ -34,10 +34,21 @@ class HealthcareAPI:
     def _make_request(self, method, endpoint, **kwargs):
         """Make HTTP request with comprehensive error handling and token refresh"""
         try:
-            headers = {**self.auth_headers, "Content-Type": "application/json"}
-            if 'headers' in kwargs:
-                headers.update(kwargs['headers'])
-            kwargs['headers'] = headers
+            # Handle file uploads differently - don't set Content-Type for multipart/form-data
+            if 'files' in kwargs:
+                # For file uploads, only include auth headers
+                headers = {**self.auth_headers}
+                if 'headers' in kwargs:
+                    headers.update(kwargs['headers'])
+                kwargs['headers'] = headers
+                # Remove Content-Type to let requests handle it automatically
+                kwargs['headers'].pop('Content-Type', None)
+            else:
+                # For regular requests, include Content-Type
+                headers = {**self.auth_headers, "Content-Type": "application/json"}
+                if 'headers' in kwargs:
+                    headers.update(kwargs['headers'])
+                kwargs['headers'] = headers
             
             if 'timeout' not in kwargs:
                 kwargs['timeout'] = 30

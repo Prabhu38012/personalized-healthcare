@@ -13,31 +13,50 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 class LLMRiskAnalyzer:
-    """Handles LLM-based risk analysis for healthcare predictions using Google's Gemini API"""
+    """Handles LLM-based risk analysis for healthcare predictions using Gemini or Groq API"""
     
     def __init__(self):
-        # Get API key from environment variable
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model_name = "gemini-2.0-flash-exp"
-        self.temperature = 0.3
+        # Try GROQ first (faster and more reliable), fallback to Gemini
+        self.groq_key = os.getenv("GROQ_API_KEY")
+        self.gemini_key = os.getenv("GEMINI_API_KEY")
+        self.model = None
+        self.provider = None
         
-        # Configure the Gemini client if API key is available
-        if not self.api_key:
-            logger.warning("GEMINI_API_KEY environment variable not set. LLM analysis will be disabled.")
-            self.model = None
-            return
-            
-        try:
-            genai.configure(api_key=self.api_key)
-            self.model = genai.GenerativeModel(self.model_name)
-            logger.info(f"Initialized Gemini model: {self.model_name}")
-        except Exception as e:
-            logger.error(f"Error initializing Gemini client: {str(e)}")
-            self.model = None
+        # Try GROQ first
+        if self.groq_key:
+            try:
+                from groq import Groq
+                self.groq_client = Groq(api_key=self.groq_key)
+                # Use currently supported model (as of Jan 2026)
+                # Options: llama-3.3-70b-versatile, llama-3.1-8b-instant, mixtral-8x7b-32768
+                self.model = "llama-3.3-70b-versatile"  # Latest, fast, accurate for medical text
+                self.provider = "groq"
+                logger.info(f"✅ Initialized GROQ with model: {self.model}")
+                return
+            except ImportError:
+                logger.warning("groq package not installed, trying Gemini...")
+            except Exception as e:
+                logger.warning(f"Error initializing GROQ: {str(e)}, trying Gemini...")
+        
+        # Fallback to Gemini
+        if self.gemini_key:
+            try:
+                genai.configure(api_key=self.gemini_key)
+                self.model = genai.GenerativeModel("gemini-2.0-flash-exp")
+                self.provider = "gemini"
+                self.temperature = 0.3
+                logger.info(f"✅ Initialized Gemini model: gemini-2.0-flash-exp")
+                return
+            except Exception as e:
+                logger.error(f"Error initializing Gemini: {str(e)}")
+        
+        logger.error("❌ No valid API keys found. Set GROQ_API_KEY or GEMINI_API_KEY in .env file")
+        logger.error("   Get GROQ key (recommended): https://console.groq.com/keys")
+        logger.error("   Get Gemini key: https://aistudio.google.com/apikey")
     
     def is_available(self) -> bool:
         """Check if LLM service is available"""
-        return self.model is not None and bool(self.api_key)
+        return self.model is not None and (bool(self.groq_key) or bool(self.gemini_key))
     
     def is_enabled(self) -> bool:
         """Alias for is_available for backward compatibility"""

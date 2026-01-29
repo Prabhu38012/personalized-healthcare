@@ -1,101 +1,149 @@
-#!/usr/bin/env python3
 """
-Healthcare System Startup Script
-Start both backend and frontend services
+Personalized Healthcare System - Startup Script
+Starts both backend (FastAPI) and frontend (Streamlit) servers
 """
-import subprocess
-import sys
-import time
 import os
-from pathlib import Path
+import sys
+import subprocess
+import time
+import signal
+import platform
+
+def check_port(port):
+    """Check if a port is already in use"""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        return s.connect_ex(('localhost', port)) == 0
 
 def start_backend():
-    """Start the backend server"""
-    print("🚀 Starting Healthcare Backend Server...")
-    print("📍 Available at: http://localhost:8002")
-    print("📚 API Documentation: http://localhost:8002/docs")
-    print("-" * 50)
+    """Start the FastAPI backend server"""
+    print("\n🚀 Starting Backend API Server (FastAPI)...")
+    print("=" * 60)
     
-    backend_cmd = [
-        sys.executable, "-m", "uvicorn",
-        "backend.app:app",
-        "--host", "0.0.0.0",
-        "--port", "8002",
-        "--reload"
-    ]
+    # Check if backend is already running
+    if check_port(8000):
+        print("⚠️  Backend server already running on port 8000")
+        print("   If you need to restart, stop the existing process first")
+        return None
     
-    return subprocess.Popen(backend_cmd)
+    backend_dir = os.path.join(os.path.dirname(__file__), 'backend')
+    if platform.system() == 'Windows':
+        backend_process = subprocess.Popen(
+            [sys.executable, 'app.py'],
+            cwd=backend_dir,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+        )
+    else:
+        backend_process = subprocess.Popen(
+            [sys.executable, 'app.py'],
+            cwd=backend_dir,
+            preexec_fn=os.setsid
+        )
+    
+    print("✅ Backend starting on http://localhost:8000")
+    print("📖 API Documentation: http://localhost:8000/docs")
+    return backend_process
 
 def start_frontend():
-    """Start the frontend server"""
-    print("🎨 Starting Healthcare Frontend...")
-    print("📍 Available at: http://localhost:8503")
-    print("-" * 50)
+    """Start the Streamlit frontend server"""
+    print("\n🌐 Starting Frontend UI (Streamlit)...")
+    print("=" * 60)
     
-    frontend_cmd = [
-        sys.executable, "-m", "streamlit",
-        "run", "frontend/app.py",
-        "--server.port", "8503"
-    ]
+    # Check if frontend is already running
+    if check_port(8501):
+        print("⚠️  Frontend server already running on port 8501")
+        print("   If you need to restart, stop the existing process first")
+        return None
     
-    return subprocess.Popen(frontend_cmd)
+    frontend_dir = os.path.join(os.path.dirname(__file__), 'frontend')
+    if platform.system() == 'Windows':
+        frontend_process = subprocess.Popen(
+            ['streamlit', 'run', 'app.py', '--server.port=8501'],
+            cwd=frontend_dir,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+        )
+    else:
+        frontend_process = subprocess.Popen(
+            ['streamlit', 'run', 'app.py', '--server.port=8501'],
+            cwd=frontend_dir,
+            preexec_fn=os.setsid
+        )
+    
+    print("✅ Frontend starting on http://localhost:8501")
+    return frontend_process
 
 def main():
     """Main startup function"""
-    print("🏥 Healthcare System Launcher")
-    print("=" * 50)
+    print("\n" + "=" * 60)
+    print("🏥 PERSONALIZED HEALTHCARE SYSTEM")
+    print("=" * 60)
     
-    # Check if we're in the right directory
-    if not Path("backend/app.py").exists():
-        print("❌ Error: Please run this script from the project root directory")
-        sys.exit(1)
+    processes = []
     
     try:
-        choice = input("Choose startup mode:\n1. Backend only\n2. Frontend only\n3. Both (recommended)\nEnter choice (1-3): ").strip()
+        # Start backend
+        backend_process = start_backend()
+        if backend_process:
+            processes.append(backend_process)
+            time.sleep(3)  # Wait for backend to initialize
         
-        processes = []
-        
-        if choice in ["1", "3"]:
-            backend_process = start_backend()
-            processes.append(("Backend", backend_process))
-            if choice == "3":
-                time.sleep(3)  # Wait for backend to start
-        
-        if choice in ["2", "3"]:
-            frontend_process = start_frontend()
-            processes.append(("Frontend", frontend_process))
+        # Start frontend
+        frontend_process = start_frontend()
+        if frontend_process:
+            processes.append(frontend_process)
+            time.sleep(2)  # Wait for frontend to initialize
         
         if not processes:
-            print("❌ Invalid choice. Exiting.")
+            print("\n⚠️  No servers were started (both ports already in use)")
+            print("   Run this script after stopping existing servers")
             return
         
-        print("\n✅ Services started successfully!")
-        print("Press Ctrl+C to stop all services")
+        print("\n" + "=" * 60)
+        print("✅ APPLICATION READY!")
+        print("=" * 60)
+        print("\n📍 Access the application:")
+        print("   🌐 Frontend UI: http://localhost:8501")
+        print("   🔧 Backend API: http://localhost:8000")
+        print("   📖 API Docs: http://localhost:8000/docs")
+        print("\n💡 Press Ctrl+C to stop all servers\n")
+        print("=" * 60)
         
-        # Wait for processes and keep them running
-        try:
-            while True:
-                # Check if any process has died unexpectedly
-                for name, process in processes:
-                    if process.poll() is not None:
-                        print(f"⚠️ {name} process stopped unexpectedly (exit code: {process.returncode})")
-                        return
-                
-                time.sleep(1)  # Check every second
-                
-        except KeyboardInterrupt:
-            print("\n🛑 Stopping services...")
-            for name, process in processes:
+        # Keep the script running and monitor processes
+        while True:
+            time.sleep(1)
+            # Check if any process has terminated
+            for proc in processes:
+                if proc.poll() is not None:
+                    print(f"\n⚠️  A server process terminated unexpectedly")
+                    raise KeyboardInterrupt
+    
+    except KeyboardInterrupt:
+        print("\n\n🛑 Shutting down servers...")
+        for proc in processes:
+            try:
+                if platform.system() == 'Windows':
+                    proc.send_signal(signal.CTRL_BREAK_EVENT)
+                else:
+                    os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+                proc.wait(timeout=5)
+            except Exception as e:
+                print(f"   Error stopping process: {e}")
                 try:
-                    process.terminate()
-                    process.wait(timeout=5)
-                    print(f"✅ {name} stopped")
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    print(f"🔥 {name} force stopped")
-            
+                    proc.kill()
+                except:
+                    pass
+        
+        print("✅ All servers stopped")
+        print("=" * 60)
+    
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"\n❌ Error: {e}")
+        # Clean up processes
+        for proc in processes:
+            try:
+                proc.kill()
+            except:
+                pass
         sys.exit(1)
 
 if __name__ == "__main__":
